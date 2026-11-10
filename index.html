@@ -349,6 +349,8 @@ async function initStore(){
   const msg=$('#stageMsg');msg.textContent='Aksesuarlar yükleniyor…';
   let db=null;try{db=window.claude?await window.claude.use('db'):null}catch(e){db=null}
   if(!db){store='local';try{ACC=JSON.parse(localStorage.getItem(LS)||'{}')||{}}catch(e){ACC={}}
+    if(!Object.keys(ACC).length){try{const r=await fetch('data/aksesuarlar.json',{cache:'no-store'});
+      if(r.ok){const j=await r.json();Object.entries(j).forEach(([id,a])=>{ACC[id]=Object.assign({id},a)});lsSave()}}catch(e){}}
     msg.textContent=Object.keys(ACC).length?'':'Henüz aksesuar yok. Ayarlar’dan ekleyebilirsin.';afterChange();return}
   store='db';DB=db;col=db.collection('accessories');
   const timer=setTimeout(()=>{msg.textContent='Kayıtlara şu an ulaşılamıyor, bağlantı bekleniyor…'},10000);
