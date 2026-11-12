@@ -1364,8 +1364,6 @@ function watchPin(){if(!DB)return;DB.doc('settings/lock').onSnapshot(sn=>{const 
 const _rs=renderSettings;renderSettings=function(){_rs();renderThermo();renderRooms();refreshCam()};
 
 init3D();renderSettings();setFloor(FLOOR);initStore().then(watchPin);initWeather();
-})();
-
 /* ---------- iHost köprüsü (ihost-koprusu/kopru.js) ---------- */
 const IHKEY='aksongur-ihost';let IHOST={url:''};try{Object.assign(IHOST,JSON.parse(localStorage.getItem(IHKEY)||'{}'))}catch(e){}
 let IHLIST=null;
@@ -1400,6 +1398,8 @@ patchAcc=function(id,patch){const a=ACC[id];const r=_patchAcc(id,patch);
   return r};
 if(IHOST.url){ihostListe(false);setInterval(()=>{if(!document.hidden)ihostListe(false)},15000);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)ihostListe(false)})}
+})();
+
 </script>
 
 </body></html>
