@@ -15,7 +15,16 @@ const HESAP = process.env.HESAP || 'https://aksi-hesap.aksongur.workers.dev';
 const KAYNAK = process.env.KAYNAK || 'https://taylanaksongur.github.io';
 const TOKEN_DOSYA = '/data/cube-token';
 const API = CUBE + '/open-api/v1/rest';
-const ANAHTAR = process.env.KOPRU_ANAHTAR || '';   // hesap servisine kayıt anahtarı (en az 16 karakter)
+/* Hesap servisine kayıt anahtarı: ilk açılışta üretilir, /data'da saklanır. İlk kayıt anahtarı servise bağlar;
+   /data kaybolursa yönetici Aksi'den köprü kaydını sıfırlar (DELETE /kopru/ihost). */
+let ANAHTAR = process.env.KOPRU_ANAHTAR || '';
+if (!ANAHTAR) {
+  try { ANAHTAR = fs.readFileSync('/data/kopru-anahtar', 'utf8').trim(); } catch { }
+  if (!ANAHTAR) {
+    ANAHTAR = require('crypto').randomBytes(24).toString('hex');
+    try { fs.mkdirSync('/data', { recursive: true }); fs.writeFileSync('/data/kopru-anahtar', ANAHTAR); } catch { }
+  }
+}
 const CF_LOG = '/tmp/cf.log';
 
 let cubeToken = process.env.CUBE_TOKEN || '';
