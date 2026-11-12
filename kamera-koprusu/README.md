@@ -1,22 +1,21 @@
 # Imou kamera köprüsü
 
-Tekne paneli ve ev paneli aynı Cloudflare Worker'ı kullanır: `https://imou-kamera.aksongur.workers.dev`. Imou anahtarları yalnızca burada durur; paneller sadece köprü şifresini bilir.
+Tekne paneli ve ev paneli aynı Cloudflare Worker'ı kullanır: `https://imou-kamera.aksongur.workers.dev`. Imou anahtarları yalnızca orada durur.
 
 | Adres | Ne verir |
 |---|---|
-| `GET /cams` | Imou hesabındaki kameralar: `{cams:[{key, name, model, online}]}` (`key` = `seriNo:kanal`) |
-| `GET /live?cam=<key>` | Canlı yayın: `{sd, hd}` HLS adresleri. Tekne panelinin kısa adları da çalışır: `on` (tekne_ön), `arka` (tekne_arka) |
+| `GET /cams` | Şifrenin açtığı kameralar: `{cams:[{id, name, online}]}` |
+| `GET /live?cam=<id>` | Canlı yayın: `{hd, sd}` HLS adresleri |
 
 Her istek `X-Key: <şifre>` başlığı ister.
 
-## Güncelleme (mevcut köprüye ev desteği)
+| Şifre (Cloudflare gizlisi) | Açtığı kameralar |
+|---|---|
+| `BOAT_KEY` | Tekne (`on`, `arka`) ve ev (`yemek`, `oturma`, `bahce`, `cocuk`) |
+| `HOME_KEY` | Yalnızca ev kameraları |
 
-1. [dash.cloudflare.com](https://dash.cloudflare.com) → **Workers & Pages** → `imou-kamera` → **Edit code**.
-2. Eski kodu sil, bu klasördeki `worker.js`'yi yapıştır, **Deploy**. Değişkenlere dokunma.
-3. Değişken adları kodda esnek: köprüde zaten tanımlı olan AppId / AppSecret / şifre adları büyük ihtimalle tanınır (liste `worker.js`'nin başında). Güncellemeden sonra tekne panelinde kamera açılmıyorsa **Settings → Variables and Secrets**'taki adları kontrol et; gerekirse `IMOU_APP_ID`, `IMOU_APP_SECRET`, `PANEL_KEY` adlarıyla ekle.
+Diğer gizliler: `IMOU_APPID`, `IMOU_SECRET`.
 
-## Hata mesajları
+## Yeni kamera eklemek
 
-- `unauthorized`: paneldeki şifre köprüdeki şifreyle aynı değil.
-- `Imou accessToken: ...`: AppId / AppSecret yanlış ya da bölge (`IMOU_BASE`) farklı.
-- `“x” adında kamera bulunamadı`: istenen kısa ad hesapta yok.
+`worker.js`'deki `GROUPS` listesine `ad: { dev: 'SERİ_NO', name: 'Görünen ad' }` satırı ekle. GitHub'a gönderilince `.github/workflows/kamera-koprusu.yml` köprüyü Cloudflare'e yükler (depo ayarlarında `CLOUDFLARE_API_TOKEN` ve `CLOUDFLARE_ACCOUNT_ID` gizlileri gerekir). Cloudflare'deki gizliler korunur.
