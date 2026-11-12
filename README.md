@@ -6,7 +6,7 @@ Evin akıllı ev kontrol paneli. Önce web'den test, sonra iOS/Android uygulamal
 - **Ayarlar:** Seçili katın planında aksesuar ekleme ve yerleştirme, senaryolar, bağlantı alanları.
 
 Sürüm: 1.2
-- **Cihazlar:** SONOFF iHost (Zigbee) ve Meross; termostat Homebridge üzerinden; Imou kameralar RTSP → go2rtc köprüsü → HLS/MJPEG.
+- **Cihazlar:** SONOFF iHost (Zigbee) ve Meross; termostat Homebridge üzerinden; Imou kameralar: her kameraya görüntü adresi + tür (MJPEG akışı, JPEG anlık görüntü, HLS); adres yoksa 3B modelden örnek görüntü (tekne panelindeki yöntem).
 
 ## Dosyalar
 
