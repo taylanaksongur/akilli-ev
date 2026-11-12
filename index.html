@@ -318,9 +318,9 @@ input[type=text],input[type=number],select{width:100%;background:var(--panel-2);
       </div>
       <div class="card conn">
         <h3>SONOFF iHost bağlantısı</h3>
-        <label class="f" for="ihostIp">Köprü adresi<input type="url" id="ihostIp" inputmode="url" autocapitalize="off" placeholder="ör. https://ihost.alanadin.com"></label>
+        <input type="hidden" id="ihostIp">
         <div class="row"><button class="btn" id="ihostBtn">Bağlantıyı dene</button><button class="btn ghost" id="ihostPair">Eşleştir</button><span class="note" id="ihostMsg">Bağlı değil</span></div>
-        <p class="note">Eşleştirmek için iHost'un üstündeki düğmeye bas, 5 dakika içinde “Eşleştir”e dokun. Sonra aksesuarı düzenlerken “Cihaz kimliği” listeden seçilir.</p>
+        <p class="note">Köprüye Aksi hesabın üzerinden bağlanılır, adres girmen gerekmez. Eşleştirmek için iHost arayüzü açıkken (ya da iHost düğmesine bastıktan sonra) “Eşleştir”e dokun. Aksesuarı düzenlerken “Cihaz kimliği” listeden seçilir; 2 kanallı rölelerde her kanal ayrı görünür.</p>
         <datalist id="ihostList"></datalist>
       </div>
       <div class="card conn">
@@ -1367,14 +1367,15 @@ init3D();renderSettings();setFloor(FLOOR);initStore().then(watchPin);initWeather
 /* ---------- iHost köprüsü (ihost-koprusu/kopru.js) ---------- */
 const IHKEY='aksongur-ihost';let IHOST={url:''};try{Object.assign(IHOST,JSON.parse(localStorage.getItem(IHKEY)||'{}'))}catch(e){}
 let IHLIST=null;
+const IHOST_TABAN=((window.hesap&&hesap.SUNUCU)||'https://aksi-hesap.aksongur.workers.dev')+'/kopru/ihost';  /* hesap servisi köprüye iletir */
+const ihostHazir=()=>{try{return !!localStorage.getItem('aksi-oturum')}catch(e){return false}};
 $('#ihostIp').value=IHOST.url;
 function ihostKaydet(){const u=$('#ihostIp').value.trim().replace(/\/+$/,'');if(u===IHOST.url)return;IHOST.url=u;try{localStorage.setItem(IHKEY,JSON.stringify(IHOST))}catch(e){}}
 async function ihostIstek(yol,govde){
-  if(!IHOST.url)throw new Error('Önce köprü adresini yaz');
   let tk=null;try{tk=localStorage.getItem('aksi-oturum')}catch(e){}   /* Aksi oturum belirteci (hesap.js) */
   if(!tk)throw new Error('Önce Aksi’de giriş yap');
   const h={'Content-Type':'application/json',Authorization:'Bearer '+tk};
-  let r;try{r=await fetch(IHOST.url+yol,{method:govde?'POST':'GET',headers:h,body:govde?JSON.stringify(govde):undefined,cache:'no-store'})}
+  let r;try{r=await fetch(IHOST_TABAN+yol,{method:govde?'POST':'GET',headers:h,body:govde?JSON.stringify(govde):undefined,cache:'no-store'})}
   catch(e){throw new Error('Köprüye ulaşılamadı')}
   const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.hata||('Hata '+r.status));return j}
 async function ihostListe(goster){const m=$('#ihostMsg');if(goster)m.textContent='Bağlanıyor…';
@@ -1392,11 +1393,11 @@ function ihostDurumAl(){if(!IHLIST)return;let n=0;
 /* Paneldeki her açma/kapama ve parlaklık değişikliği iHost'a gider */
 const _patchAcc=patchAcc;
 patchAcc=function(id,patch){const a=ACC[id];const r=_patchAcc(id,patch);
-  if(a&&a.src==='iHost'&&a.extId&&IHOST.url&&('on' in patch||'bri' in patch)){
+  if(a&&a.src==='iHost'&&a.extId&&ihostHazir()&&('on' in patch||'bri' in patch)){
     const g={};if('on' in patch)g.acik=!!patch.on;if('bri' in patch&&Number.isFinite(patch.bri))g.parlaklik=patch.bri;
     ihostIstek('/cihaz/'+encodeURIComponent(a.extId),g).catch(e=>toast(a.name+': '+e.message))}
   return r};
-if(IHOST.url){ihostListe(false);setInterval(()=>{if(!document.hidden)ihostListe(false)},15000);
+if(ihostHazir()){ihostListe(false);setInterval(()=>{if(!document.hidden)ihostListe(false)},15000);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)ihostListe(false)})}
 })();
 

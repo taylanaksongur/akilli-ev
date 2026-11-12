@@ -17,6 +17,7 @@ if [ -n "$TUNEL_TOKEN" ]; then
   /cf tunnel --no-autoupdate run --token "$TUNEL_TOKEN" &
 else
   # Hızlı tünel: adres kayıtlarda "trycloudflare.com" satırında görünür
-  /cf tunnel --no-autoupdate --url "http://localhost:$PORT" 2>&1 | grep --line-buffered -E "trycloudflare|ERR" &
+  /cf tunnel --no-autoupdate --url "http://localhost:$PORT" > /tmp/cf.log 2>&1 &
+  ( sleep 15; grep -Eo "https://[a-z0-9-]+\.trycloudflare\.com" /tmp/cf.log | tail -1 ) &
 fi
 exec node /k.js

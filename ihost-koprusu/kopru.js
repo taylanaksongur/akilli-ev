@@ -15,6 +15,8 @@ const HESAP = process.env.HESAP || 'https://aksi-hesap.aksongur.workers.dev';
 const KAYNAK = process.env.KAYNAK || 'https://taylanaksongur.github.io';
 const TOKEN_DOSYA = '/data/cube-token';
 const API = CUBE + '/open-api/v1/rest';
+const ANAHTAR = process.env.KOPRU_ANAHTAR || '';   // hesap servisine kayıt anahtarı (en az 16 karakter)
+const CF_LOG = '/tmp/cf.log';
 
 let cubeToken = process.env.CUBE_TOKEN || '';
 try { cubeToken = cubeToken || fs.readFileSync(TOKEN_DOSYA, 'utf8').trim(); } catch { }
@@ -51,15 +53,24 @@ async function cube(yontem, yol, govde) {
 }
 function sadele(c) {
   const s = c.state || {};
-  return {
-    id: c.serial_number,
-    ad: c.name || c.manufacturer + ' ' + c.model,
+  const kanallar = s.toggle ? Object.keys(s.toggle).sort((a, b) => a - b) : [];
+  const adlar = (c.tags && c.tags.toggle) || {};
+  const ortak = {
     tur: c.display_category,
     cevrimici: c.online !== false,
-    acik: s.power ? s.power.powerState === 'on' : null,
     parlaklik: s.brightness ? s.brightness.brightness : null,
     dimmer: (c.capabilities || []).some(x => x.capability === 'brightness'),
   };
+  const ad = c.name || (c.manufacturer + ' ' + c.model);
+  if (kanallar.length > 1) return kanallar.map(k => Object.assign({}, ortak, {
+    id: c.serial_number + ':' + k,
+    ad: adlar[k] ? `${ad} · ${adlar[k]}` : `${ad} · ${k}`,
+    acik: s.toggle[k].toggleState === 'on',
+  }));
+  return [Object.assign({}, ortak, {
+    id: c.serial_number, ad,
+    acik: s.power ? s.power.powerState === 'on' : kanallar.length ? s.toggle[kanallar[0]].toggleState === 'on' : null,
+  })];
 }
 
 // ---- HTTP
@@ -100,15 +111,19 @@ http.createServer(async (req, res) => {
     }
     if (yol === '/cihazlar' && req.method === 'GET') {
       const d = await cube('GET', '/devices');
-      return yanit(res, 200, { cihazlar: (d.device_list || []).map(sadele) });
+      return yanit(res, 200, { cihazlar: (d.device_list || []).flatMap(sadele) });
     }
     const m = yol.match(/^\/cihaz\/([^/]+)$/);
     if (m && req.method === 'POST') {
       const b = await govdeOku(req), state = {};
-      if (typeof b.acik === 'boolean') state.power = { powerState: b.acik ? 'on' : 'off' };
+      const [seri, kanal] = decodeURIComponent(m[1]).split(':');
+      if (typeof b.acik === 'boolean') {
+        if (kanal) state.toggle = { [kanal]: { toggleState: b.acik ? 'on' : 'off' } };
+        else state.power = { powerState: b.acik ? 'on' : 'off' };
+      }
       if (Number.isFinite(b.parlaklik)) state.brightness = { brightness: Math.max(1, Math.min(100, Math.round(b.parlaklik))) };
       if (!Object.keys(state).length) return yanit(res, 400, { hata: 'acik ya da parlaklik gerekli' });
-      await cube('PUT', '/devices/' + encodeURIComponent(decodeURIComponent(m[1])), { state });
+      await cube('PUT', '/devices/' + encodeURIComponent(seri), { state });
       return yanit(res, 200, { ok: true });
     }
     yanit(res, 404, { hata: 'Bulunamadı' });
@@ -116,3 +131,21 @@ http.createServer(async (req, res) => {
     yanit(res, e.durum || 500, { hata: e.message || 'Hata' });
   }
 }).listen(PORT, () => console.log(`iHost köprüsü :${PORT}, CUBE ${CUBE || '(adres yok!)'}, eşleşme ${cubeToken ? 'var' : 'yok'}`));
+
+// ---- Tünel adresini hesap servisine bildir (panel köprüye hesap servisi üzerinden ulaşır)
+let sonAdres = '';
+async function bildir() {
+  if (!ANAHTAR) return;
+  let log = '';
+  try { log = fs.readFileSync(CF_LOG, 'utf8'); } catch { return; }
+  const hepsi = log.match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/g);
+  const adres = process.env.KOPRU_ADRES || (hepsi && hepsi[hepsi.length - 1]);
+  if (!adres || adres === sonAdres) return;
+  try {
+    const r = await fetch(HESAP + '/kopru/kayit', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ad: 'ihost', url: adres, anahtar: ANAHTAR }) });
+    if (r.ok) { sonAdres = adres; console.log('Hesap servisine bildirildi:', adres); }
+    else console.log('Bildirim reddedildi:', r.status, await r.text());
+  } catch (e) { console.log('Bildirim gönderilemedi:', e.message); }
+}
+setInterval(bildir, 10000); setTimeout(bildir, 3000);
