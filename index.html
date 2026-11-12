@@ -1131,7 +1131,7 @@ document.addEventListener('click',e=>{
   const t=e.target.closest('[data-view],[data-kind],[data-edit],[data-scene],#addBtn,#fSave,#fCancel,#fDel,#fDelYes,#fDelNo,#clearEx,#clearExYes,#ihostBtn,#ihostPair,#merossBtn');if(!t)return;
   if(t.dataset.view){if(t.dataset.view==='ayarlar'&&$('#view-ayarlar').hidden){openLock();return}showView(t.dataset.view);return}
   if(t.dataset.kind){readForm();const old=edit.kind;edit.kind=t.dataset.kind;const n=KINDS[edit.kind].n;
-    if(n!=='many'&&edit.pts.length>n)edit.pts=edit.pts.slice(-n);const mx=KINDS[edit.kind].max;if(mx&&edit.pts.length>mx)edit.pts=edit.pts.slice(-mx);if(!KINDS[edit.kind].light)edit.dim=false;if(edit.kind==='camera'&&edit.src==='iHost')edit.src='Imou';if(edit.kind==='camera'&&!CAMLIST&&CAMCFG.pass)setTimeout(loadCamList,0);else if(old==='camera'&&edit.kind!=='camera'&&edit.src==='Imou')edit.src='iHost';
+    if(n!=='many'&&edit.pts.length>n)edit.pts=edit.pts.slice(-n);const mx=KINDS[edit.kind].max;if(mx&&edit.pts.length>mx)edit.pts=edit.pts.slice(-mx);if(!KINDS[edit.kind].light)edit.dim=false;if(edit.kind==='camera'&&edit.src==='iHost')edit.src='Imou';if(edit.kind==='camera'&&!CAMLIST&&camYetki())setTimeout(loadCamList,0);else if(old==='camera'&&edit.kind!=='camera'&&edit.src==='Imou')edit.src='iHost';
     if(!edit.name.trim()||Object.values(KINDS).some(k=>k.label===edit.name))edit.name=KINDS[edit.kind].label;formErr='';renderSettings();return}
   if(t.dataset.edit){startEdit(t.dataset.edit);$('#picker').scrollIntoView({behavior:'smooth',block:'nearest'});return}
   if(t.dataset.scene){runScene(SCENES.find(s=>s.id===t.dataset.scene));return}
@@ -1235,6 +1235,8 @@ function camErr(show){const e=$('#camErr');if(e)e.hidden=!show}
 function camFail(){camErr(true);camChip('lost','Görüntü yok')}
 /* tekne panelindeki yöntem: köprüden /live?cam=<ad> (X-Key şifre) → {sd,hd} HLS adresi */
 const CAM_API='https://imou-kamera.aksongur.workers.dev';
+const camTok=()=>{try{return localStorage.getItem('aksi-oturum')||''}catch(e){return ''}};const camYetki=()=>!!(CAMCFG.pass||camTok());
+const camBaslik=()=>CAMCFG.pass?{'X-Key':CAMCFG.pass}:{Authorization:'Bearer '+camTok()};
 const CAMKEY='aksongur-kamera-v3';let CAMCFG={api:CAM_API,pass:'',q:'sd'};
 try{const j=JSON.parse(localStorage.getItem(CAMKEY)||'null');if(j)CAMCFG=Object.assign(CAMCFG,j)}catch(e){}
 /* tekne paneli aynı adresten (taylanaksongur.github.io) açılıyorsa onun kayıtlı köprü şifresini kullan */
@@ -1244,13 +1246,13 @@ let camFails=0,camRetry=null,camReq=0;
 function camFail(msg){clearTimeout(camRetry);const id=camId,a=ACC[id];camStop();camErr(true);camChip('lost','Bağlantı yok');const t=$('#camErrT');if(t)t.textContent=msg;
   camFails++;if(a&&camFails<3&&!/şifre|önizleme/i.test(msg))camRetry=setTimeout(()=>{if(camId===id&&!document.hidden)camPlay(ACC[id])},5000*camFails)}
 async function camPlay(a){const key=(a.cam||'').trim(),vw=$('#camView');if(!vw)return;camStop();clearTimeout(camRetry);vw.querySelectorAll('video,img,canvas').forEach(n=>n.remove());camErr(false);
-  if(!CAMCFG.pass||!key){const cv=document.createElement('canvas');cv.width=960;cv.height=540;cv.setAttribute('aria-label',a.name+' örnek görüntü');vw.prepend(cv);
+  if(!camYetki()||!key){const cv=document.createElement('canvas');cv.width=960;cv.height=540;cv.setAttribute('aria-label',a.name+' örnek görüntü');vw.prepend(cv);
     camDemo={id:a.id,cv,t:0};needs=true;camChip('demo','Örnek');camMode('ÖRNEK · 3B model görüntüsü');return}
   const req=++camReq,q=CAMCFG.q==='hd'?'HD':'SD';camChip('demo','Bağlanıyor');camMode('CANLI · '+q);
   const v=document.createElement('video');v.muted=true;v.autoplay=true;v.playsInline=true;v.setAttribute('playsinline','');v.setAttribute('disablepictureinpicture','');vw.prepend(v);
   v.addEventListener('playing',()=>{if(camId!==a.id)return;camFails=0;camErr(false);camChip('live','Canlı')});
   v.addEventListener('loadedmetadata',()=>{if(v.videoWidth)camMode('CANLI · '+q+' · '+v.videoWidth+'×'+v.videoHeight)});
-  try{let r;try{r=await fetch(CAMCFG.api.replace(/\/+$/,'')+'/live?cam='+encodeURIComponent(key),{headers:{'X-Key':CAMCFG.pass},cache:'no-store'})}
+  try{let r;try{r=await fetch(CAMCFG.api.replace(/\/+$/,'')+'/live?cam='+encodeURIComponent(key),{headers:camBaslik(),cache:'no-store'})}
       catch(e){throw new Error('Kamera köprüsüne ulaşılamadı. Bu önizleme dış bağlantıya izin vermiyor olabilir; paneli GitHub sayfasından aç.')}
     const j=await r.json().catch(()=>({}));if(req!==camReq||camId!==a.id)return;
     if(!r.ok)throw new Error(r.status===401?'Kamera şifresi yanlış. Ayarlar → Kameralar (Imou).':r.status===404?'Köprü bulunamadı; Ayarlar → Kameralar (Imou) bölümündeki köprü adresini kontrol et.':(j.error||'Köprü hata verdi ('+r.status+')'));
@@ -1277,11 +1279,11 @@ function parseCamList(j){let arr=Array.isArray(j)?j:(j&&(j.cams||j.cameras||j.de
     return{key,name:String(it.name??it.deviceName??it.label??it.title??key),model:it.model||it.deviceModel||'',online:it.online??it.status}}).filter(Boolean);
   return out.length?out:null}
 async function loadCamList(){if(camListBusy)return;
-  if(!CAMCFG.pass){CAMLIST=null;camListNote='Şifre girilmedi; liste köprüden alınamıyor.';renderCamFound();return}
+  if(!camYetki()){CAMLIST=null;camListNote='Şifre girilmedi; liste köprüden alınamıyor.';renderCamFound();return}
   camListBusy=true;camListNote='Kamera listesi alınıyor…';renderCamFound();
   const base=CAMCFG.api.replace(/\/+$/,'');let note='',list=null;
   for(const p of ['/cams','/list','/cameras','/devices']){
-    try{const r=await fetch(base+p,{headers:{'X-Key':CAMCFG.pass},cache:'no-store'});
+    try{const r=await fetch(base+p,{headers:camBaslik(),cache:'no-store'});
       if(r.status===401){note='Kamera şifresi yanlış.';break}
       if(!r.ok)continue;const j=await r.json().catch(()=>null);list=parseCamList(j);if(list){note=list.length+' kamera köprüden alındı.';break}}
     catch(e){note='Kamera köprüsüne ulaşılamadı.';break}}
@@ -1289,7 +1291,7 @@ async function loadCamList(){if(camListBusy)return;
   CAMLIST=list;camListNote=note;camListBusy=false;try{localStorage.setItem(CAMLKEY,JSON.stringify({list,note}))}catch(e){}
   renderCamFound();if(edit&&edit.kind==='camera'){readForm();renderSide()}}
 function camListNow(){return CAMLIST||CAM_KNOWN}
-function renderCamFound(){const el=$('#camFound');if(!el)return;const m=$('#camMsg');if(m)m.textContent=(camFromBoat?'Şifre tekne panelinden alındı. ':'')+(camListNote||(CAMCFG.pass?'Şifre bu cihazda kayıtlı':'Şifre yok: örnek görüntü gösteriliyor'));
+function renderCamFound(){const el=$('#camFound');if(!el)return;const m=$('#camMsg');if(m)m.textContent=(camFromBoat?'Şifre tekne panelinden alındı. ':'')+(camListNote||(CAMCFG.pass?'Şifre bu cihazda kayıtlı':camYetki()?'Aksi hesabınla bağlı':'Şifre yok: örnek görüntü gösteriliyor'));
   el.innerHTML=(CAMLIST||[]).map(c=>`<span>${c.online===false?'○ ':c.online?'● ':''}${esc(c.name)}${c.model?`<small>${esc(c.model)}</small>`:''}</span>`).join('')}
 function camPickerHTML(){const list=camListNow(),cur=edit.cam||'';const inList=list.some(c=>c.key===cur);const manual=edit.camManual||(cur&&!inList);
   const used=new Set(Object.values(ACC).filter(a=>a.kind==='camera'&&a.id!==edit.id&&a.cam).map(a=>a.cam));
@@ -1303,11 +1305,11 @@ document.addEventListener('change',e=>{if(e.target.id!=='fCamKey'||!edit)return;
   if(k&&k!=='__manual'){const c=camListNow().find(x=>x.key===k);if(c&&(!edit.name.trim()||edit.name==='Kamera'))edit.name=c.name;edit.extId=k.split(':')[0]}renderSide()});
 document.addEventListener('click',e=>{if(e.target.id==='fCamRefresh'){readForm();loadCamList()}else if(e.target.id==='camListBtn')loadCamList()});
 function applyCamCfg(){$('#camApi').value=CAMCFG.api;$('#camPass').value=CAMCFG.pass;$('#camQ').value=CAMCFG.q;
-  $('#camMsg').textContent=CAMCFG.pass?'Şifre bu cihazda kayıtlı':'Şifre yok: örnek görüntü gösteriliyor'}
+  $('#camMsg').textContent=CAMCFG.pass?'Şifre bu cihazda kayıtlı':camYetki()?'Aksi hesabınla bağlı':'Şifre yok: örnek görüntü gösteriliyor'}
 $('#camForm').addEventListener('submit',e=>{e.preventDefault();
   CAMCFG={api:$('#camApi').value.trim()||CAM_API,pass:$('#camPass').value.trim(),q:$('#camQ').value};
   try{localStorage.setItem(CAMKEY,JSON.stringify(CAMCFG))}catch(x){}applyCamCfg();toast('Kameralar kaydedildi');loadCamList();camFails=0;if(camId)renderCam();renderRooms()});
-applyCamCfg();renderCamFound();if(CAMCFG.pass&&!CAMLIST)setTimeout(loadCamList,500);
+applyCamCfg();renderCamFound();if(camYetki()&&!CAMLIST)setTimeout(loadCamList,500);
 const fmtOsd=()=>new Date().toLocaleString('tr-TR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});
 function renderCam(){const a=ACC[camId];if(!a)return closeCam();
   const cams=camsHere(),n=Math.max(1,cams.findIndex(c=>c.id===a.id)+1);
@@ -1345,7 +1347,7 @@ camWin.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)ret
 let openRoom=null;
 const UNIT_ORDER=['camera','spot','pendant','sconce','lamp','strip','plug','cover','climate','sensor'];
 function unitBtn(a){const k=KINDS[a.kind]||KINDS.spot,ic=icon(a.kind in KINDS?a.kind:'spot','currentColor',15);
-  if(a.kind==='camera')return`<button type="button" class="ubtn cam-u" data-cam="${a.id}" aria-pressed="${camId===a.id}">${ic}<span>${esc(a.name)}</span><small>${camId===a.id?'Açık':a.cam&&CAMCFG.pass?'Canlı izle':'Örnek görüntü'}</small></button>`;
+  if(a.kind==='camera')return`<button type="button" class="ubtn cam-u" data-cam="${a.id}" aria-pressed="${camId===a.id}">${ic}<span>${esc(a.name)}</span><small>${camId===a.id?'Açık':a.cam&&camYetki()?'Canlı izle':'Örnek görüntü'}</small></button>`;
   if(a.kind==='sensor')return`<div class="ubtn info">${ic}<span>${esc(a.name)}</span><small>Sensör</small></div>`;
   if(a.kind==='climate')return`<div class="ubtn info">${ic}<span>${esc(a.name)}</span><small>Hedef ${(a.setT??22).toFixed(1).replace('.',',')}°</small></div>`;
   const on=!!a.on,st=a.kind==='cover'?(on?'Açık':'Kapalı'):on?(a.dim&&a.bri<100?'Açık · %'+a.bri:'Açık'):'Kapalı';

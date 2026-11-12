@@ -4,3 +4,8 @@ main = "worker.js"
 compatibility_date = "2026-11-01"
 workers_dev = true
 keep_vars = true
+
+# Aksi hesap belirtecini doğrulamak için hesap servisine doğrudan bağlantı
+[[services]]
+binding = "HESAP"
+service = "aksi-hesap"

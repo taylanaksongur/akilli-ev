@@ -48,12 +48,25 @@ function groupFor(env, key) { if (!key) return null;
   if (env.BOAT_KEY && env.BOAT_KEY === key) return { ...GROUPS.BOAT_KEY, ...GROUPS.HOME_KEY };
   for (const k in GROUPS) if (env[k] && env[k] === key) return GROUPS[k]; return null; }
 
+/* Aksi hesabı: ev yetkisi ev kameralarını, tekne yetkisi tüm kameraları (tekne + ev) açar. Hesap servisine servis bağlantısıyla sorulur. */
+async function groupForAksi(env, auth) {
+  if (!auth || !auth.startsWith('Bearer ') || !env.HESAP) return null;
+  try {
+    const r = await env.HESAP.fetch(new Request('https://aksi-hesap/ben', { headers: { Authorization: auth } }));
+    if (!r.ok) return null;
+    const { kullanici: k } = await r.json();
+    const al = k.rol === 'yonetici' ? ['ev', 'tekne'] : (k.alanlar || []);
+    if (al.includes('tekne')) return al.includes('ev') ? { ...GROUPS.BOAT_KEY, ...GROUPS.HOME_KEY } : GROUPS.BOAT_KEY;
+    return al.includes('ev') ? GROUPS.HOME_KEY : null;
+  } catch { return null; }
+}
+
 export default {
   async fetch(req, env) {
-    const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'X-Key', 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
+    const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'X-Key, Authorization', 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
     if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
     const u = new URL(req.url), out = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: cors });
-    const g = groupFor(env, req.headers.get('X-Key') || u.searchParams.get('key'));
+    const g = groupFor(env, req.headers.get('X-Key') || u.searchParams.get('key')) || await groupForAksi(env, req.headers.get('Authorization'));
     if (!g) return out({ error: 'Şifre yanlış' }, 401);
     try {
       if (u.pathname === '/cams') {
