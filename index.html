@@ -243,7 +243,7 @@ input[type=text],input[type=number],select{width:100%;background:var(--panel-2);
         <button role="tab" id="tab-kontrol" aria-selected="true" data-view="kontrol">Kontrol</button>
         <button role="tab" id="tab-ayarlar" aria-selected="false" data-view="ayarlar">Ayarlar</button>
       </nav>
-      <span class="chip demo" title="Cihazlar henüz bağlanmadı; değişiklikler sadece bu panelde">● Demo · v1.5</span>
+      <span class="chip demo" title="Cihazlar henüz bağlanmadı; değişiklikler sadece bu panelde">● Demo · v2.0</span>
     </div>
   </header>
 
@@ -257,7 +257,7 @@ input[type=text],input[type=number],select{width:100%;background:var(--panel-2);
       <div class="rooms-ov" id="roomsOv" aria-label="Odalar"></div>
       <div class="cam" id="camWin" hidden role="dialog" aria-label="Kamera görüntüsü"></div>
       <div class="stage-msg" id="stageMsg"></div>
-      <div class="hint">Tek parmak: döndür · İki parmak: kaydır ve yakınlaş · Farede sağ tık veya Shift ile sürükle: kaydır · Boş yere çift dokun: görünümü sıfırla · Aksesuara dokun: aç / kapat · Kameraya dokun: görüntüyü aç · <span id="ver">Sürüm 1.5</span></div>
+      <div class="hint">Tek parmak: döndür · İki parmak: kaydır ve yakınlaş · Farede sağ tık veya Shift ile sürükle: kaydır · Boş yere çift dokun: görünümü sıfırla · Aksesuara dokun: aç / kapat · Kameraya dokun: görüntüyü aç · <span id="ver">Sürüm 2.0</span></div>
     </div>
   </section>
 
@@ -287,10 +287,10 @@ input[type=text],input[type=number],select{width:100%;background:var(--panel-2);
     <div class="setup-grid">
       <form class="card conn" id="camForm" autocomplete="off">
         <h3>Kameralar (Imou)</h3>
-        <p class="note">Kameralar Imou bulutundan, tekne panelindeki köprü (Cloudflare Worker) üzerinden canlı gelir. Görüntü yalnızca kamera penceresi açıkken akar, kapatınca durur. SD az veri harcar, HD daha net. Şifre yalnızca bu cihazda saklanır. Şifre boşsa 3B modelden örnek görüntü gösterilir.</p>
+        <p class="note">Kameralar Imou bulutundan, evin kamera köprüsü (Cloudflare Worker) üzerinden canlı gelir. Kamera listesi Imou hesabından otomatik alınır. Görüntü yalnızca kamera penceresi açıkken akar, kapatınca durur. SD az veri harcar, HD daha net. Şifre yalnızca bu cihazda saklanır. Şifre boşsa 3B modelden örnek görüntü gösterilir.</p>
         <label class="f" for="camApi">Köprü adresi<input type="text" id="camApi" inputmode="url" autocapitalize="off" spellcheck="false"></label>
         <div class="row" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px">
-          <label class="f" for="camPass">Kamera şifresi<input type="password" id="camPass" placeholder="kamera köprüsü şifresi" autocomplete="off"></label>
+          <label class="f" for="camPass">Kamera şifresi<input type="password" id="camPass" placeholder="köprüdeki PANEL_KEY" autocomplete="off"></label>
           <label class="f" for="camQ">Kalite<select id="camQ"><option value="sd">SD (az veri)</option><option value="hd">HD (4MP)</option></select></label>
         </div>
         <div class="row"><button type="submit" class="btn">Kameraları kaydet</button><button type="button" class="btn ghost" id="camListBtn">Listeyi yenile</button><span class="note" id="camMsg"></span></div>
@@ -1191,11 +1191,10 @@ function camMode(t){const o=$('#camMode');if(o)o.textContent=t}
 function camErr(show){const e=$('#camErr');if(e)e.hidden=!show}
 function camFail(){camErr(true);camChip('lost','Görüntü yok')}
 /* tekne panelindeki yöntem: köprüden /live?cam=<ad> (X-Key şifre) → {sd,hd} HLS adresi */
-const CAMKEY='aksongur-kamera-v1';let CAMCFG={api:'https://imou-kamera.aksongur.workers.dev',pass:'',q:'sd'};
+const CAM_API='https://imou-ev.aksongur.workers.dev';
+const CAMKEY='aksongur-kamera-v2';let CAMCFG={api:CAM_API,pass:'',q:'sd'};
 try{const j=JSON.parse(localStorage.getItem(CAMKEY)||'null');if(j)CAMCFG=Object.assign(CAMCFG,j)}catch(e){}
-/* tekne paneli aynı adresten (taylanaksongur.github.io) açılıyorsa onun kayıtlı kamera şifresini kullan */
 let camFromBoat=false;
-if(!CAMCFG.pass){try{const b=JSON.parse(localStorage.getItem('tekne-kamera-v2')||'null');if(b&&b.pass){CAMCFG.pass=b.pass;if(b.q)CAMCFG.q=b.q;camFromBoat=true}}catch(e){}}
 let camFails=0,camRetry=null,camReq=0;
 function camFail(msg){clearTimeout(camRetry);const id=camId,a=ACC[id];camStop();camErr(true);camChip('lost','Bağlantı yok');const t=$('#camErrT');if(t)t.textContent=msg;
   camFails++;if(a&&camFails<3&&!/şifre|önizleme/i.test(msg))camRetry=setTimeout(()=>{if(camId===id&&!document.hidden)camPlay(ACC[id])},5000*camFails)}
@@ -1209,7 +1208,7 @@ async function camPlay(a){const key=(a.cam||'').trim(),vw=$('#camView');if(!vw)r
   try{let r;try{r=await fetch(CAMCFG.api.replace(/\/+$/,'')+'/live?cam='+encodeURIComponent(key),{headers:{'X-Key':CAMCFG.pass},cache:'no-store'})}
       catch(e){throw new Error('Kamera köprüsüne ulaşılamadı. Bu önizleme dış bağlantıya izin vermiyor olabilir; paneli GitHub sayfasından aç.')}
     const j=await r.json().catch(()=>({}));if(req!==camReq||camId!==a.id)return;
-    if(!r.ok)throw new Error(r.status===401?'Kamera şifresi yanlış. Ayarlar → Kameralar (Imou).':r.status===404?`Köprüde “${key}” adında kamera yok.`:(j.error||'Köprü hata verdi ('+r.status+')'));
+    if(!r.ok)throw new Error(r.status===401?'Kamera şifresi yanlış. Ayarlar → Kameralar (Imou).':r.status===404?'Köprü bulunamadı; Ayarlar → Kameralar (Imou) bölümündeki köprü adresini kontrol et.':(j.error||'Köprü hata verdi ('+r.status+')'));
     const url=CAMCFG.q==='hd'?(j.hd||j.sd):(j.sd||j.hd);if(!url)throw new Error('Yayın adresi gelmedi');
     if(v.canPlayType('application/vnd.apple.mpegurl')){v.src=url;v.onerror=()=>{if(camId===a.id)camFail('Kamera yanıt vermiyor; çevrimdışı olabilir.')};v.play().catch(()=>{});return}
     const Hls=await loadHls().catch(()=>null);if(req!==camReq||camId!==a.id)return;
@@ -1220,8 +1219,8 @@ async function camPlay(a){const key=(a.cam||'').trim(),vw=$('#camView');if(!vw)r
   catch(e){if(req===camReq&&camId===a.id)camFail(e.message)}}
 document.addEventListener('visibilitychange',()=>{if(!camId)return;if(document.hidden){camStop();clearTimeout(camRetry)}else{camFails=0;const a=ACC[camId];if(a)camPlay(a)}});
 /* köprüden kamera listesi: birkaç olası adres denenir, biçim esnek okunur; olmazsa tekne panelinde bilinen kameralar */
-const CAMLKEY='aksongur-kamera-liste-v1';
-const CAM_KNOWN=[{key:'on',name:'Ön kamera'},{key:'arka',name:'Arka kamera'}];
+const CAMLKEY='aksongur-kamera-liste-v2';
+const CAM_KNOWN=[];
 let CAMLIST=null,camListNote='',camListBusy=false;
 try{const j=JSON.parse(localStorage.getItem(CAMLKEY)||'null');if(j&&Array.isArray(j.list)){CAMLIST=j.list;camListNote=j.note||''}}catch(e){}
 function parseCamList(j){let arr=Array.isArray(j)?j:(j&&(j.cams||j.cameras||j.devices||j.list||j.data||j.result));
@@ -1241,29 +1240,29 @@ async function loadCamList(){if(camListBusy)return;
       if(r.status===401){note='Kamera şifresi yanlış.';break}
       if(!r.ok)continue;const j=await r.json().catch(()=>null);list=parseCamList(j);if(list){note=list.length+' kamera köprüden alındı.';break}}
     catch(e){note='Kamera köprüsüne ulaşılamadı.';break}}
-  if(!list){list=CAM_KNOWN.slice();note=(note?note+' ':'Köprü kamera listesi vermedi. ')+'Bilinen kameralar gösteriliyor.'}
+  if(!list){list=[];note=note||'Köprü kamera listesi vermedi.'}
   CAMLIST=list;camListNote=note;camListBusy=false;try{localStorage.setItem(CAMLKEY,JSON.stringify({list,note}))}catch(e){}
   renderCamFound();if(edit&&edit.kind==='camera'){readForm();renderSide()}}
 function camListNow(){return CAMLIST||CAM_KNOWN}
 function renderCamFound(){const el=$('#camFound');if(!el)return;const m=$('#camMsg');if(m)m.textContent=(camFromBoat?'Şifre tekne panelinden alındı. ':'')+(camListNote||(CAMCFG.pass?'Şifre bu cihazda kayıtlı':'Şifre yok: örnek görüntü gösteriliyor'));
-  el.innerHTML=(CAMLIST||[]).map(c=>`<span>${esc(c.name)}<small>${esc(c.key)}</small></span>`).join('')}
+  el.innerHTML=(CAMLIST||[]).map(c=>`<span>${c.online===false?'○ ':c.online?'● ':''}${esc(c.name)}${c.model?`<small>${esc(c.model)}</small>`:''}</span>`).join('')}
 function camPickerHTML(){const list=camListNow(),cur=edit.cam||'';const inList=list.some(c=>c.key===cur);const manual=edit.camManual||(cur&&!inList);
   const used=new Set(Object.values(ACC).filter(a=>a.kind==='camera'&&a.id!==edit.id&&a.cam).map(a=>a.cam));
   return`<div class="cam-pick"><label class="f" for="fCamKey">Kamera (Imou)<select id="fCamKey"><option value="">Seçilmedi · örnek görüntü</option>
-    ${list.map(c=>`<option value="${esc(c.key)}" ${c.key===cur&&!manual?'selected':''}>${esc(c.name)}${c.model?' · '+esc(c.model):''}${used.has(c.key)?' (kullanılıyor)':''}</option>`).join('')}
-    <option value="__manual" ${manual?'selected':''}>Listede yok, adını yaz…</option></select></label>
+    ${list.map(c=>`<option value="${esc(c.key)}" ${c.key===cur&&!manual?'selected':''}>${esc(c.name)}${c.model?' · '+esc(c.model):''}${c.online===false?' · çevrimdışı':''}${used.has(c.key)?' (kullanılıyor)':''}</option>`).join('')}
+    <option value="__manual" ${manual?'selected':''}>Listede yok, kimliğini yaz…</option></select></label>
     <button type="button" class="btn small ghost" id="fCamRefresh">${camListBusy?'Alınıyor…':'Listeyi yenile'}</button></div>
-    ${manual?`<label class="f" for="fCamMan">Köprüdeki kamera adı<input type="text" id="fCamMan" value="${esc(cur)}" placeholder="ör. salon" autocapitalize="off" spellcheck="false"></label>`:''}
+    ${manual?`<label class="f" for="fCamMan">Kamera kimliği (seri no:kanal)<input type="text" id="fCamMan" value="${esc(cur)}" placeholder="ör. 7F0A1B2C3D4E5:0" autocapitalize="off" spellcheck="false"></label>`:''}
     <p class="note">${esc(camListNote||'Liste Ayarlar → Kameralar (Imou) bölümündeki şifreyle köprüden alınır.')} Kamera seçilmezse 3B modelden örnek görüntü gösterilir.</p>`}
 document.addEventListener('change',e=>{if(e.target.id!=='fCamKey'||!edit)return;const k=e.target.value;readForm();
-  if(k&&k!=='__manual'){const c=camListNow().find(x=>x.key===k);if(c&&(!edit.name.trim()||edit.name==='Kamera'))edit.name=c.name}renderSide()});
+  if(k&&k!=='__manual'){const c=camListNow().find(x=>x.key===k);if(c&&(!edit.name.trim()||edit.name==='Kamera'))edit.name=c.name;edit.extId=k.split(':')[0]}renderSide()});
 document.addEventListener('click',e=>{if(e.target.id==='fCamRefresh'){readForm();loadCamList()}else if(e.target.id==='camListBtn')loadCamList()});
 function applyCamCfg(){$('#camApi').value=CAMCFG.api;$('#camPass').value=CAMCFG.pass;$('#camQ').value=CAMCFG.q;
   $('#camMsg').textContent=CAMCFG.pass?'Şifre bu cihazda kayıtlı':'Şifre yok: örnek görüntü gösteriliyor'}
 $('#camForm').addEventListener('submit',e=>{e.preventDefault();
-  CAMCFG={api:$('#camApi').value.trim()||'https://imou-kamera.aksongur.workers.dev',pass:$('#camPass').value.trim(),q:$('#camQ').value};
+  CAMCFG={api:$('#camApi').value.trim()||CAM_API,pass:$('#camPass').value.trim(),q:$('#camQ').value};
   try{localStorage.setItem(CAMKEY,JSON.stringify(CAMCFG))}catch(x){}applyCamCfg();toast('Kameralar kaydedildi');loadCamList();camFails=0;if(camId)renderCam();renderRooms()});
-applyCamCfg();renderCamFound();if(CAMCFG.pass&&(!CAMLIST||camFromBoat))setTimeout(loadCamList,500);
+applyCamCfg();renderCamFound();if(CAMCFG.pass&&!CAMLIST)setTimeout(loadCamList,500);
 const fmtOsd=()=>new Date().toLocaleString('tr-TR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});
 function renderCam(){const a=ACC[camId];if(!a)return closeCam();
   const cams=camsHere(),n=Math.max(1,cams.findIndex(c=>c.id===a.id)+1);
