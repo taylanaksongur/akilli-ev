@@ -22,9 +22,9 @@ eWeLink CUBE arayüzü (`http://ihost.local`) → **Docker** → yeni konteyner:
 - **Ağ:** `host`
 - **Ortam:** `CUBE_ADRES=http://<iHost-IP>` (alan adı ve token'lı tünel varsa ayrıca `TUNEL_TOKEN=<token>`)
 - **Birim:** `/data`
-- **Komut:**
+- **Komut** (iHost arayüzü komutu tek parça olarak Node'a verir, bu yüzden `--eval=` biçimi):
   ```
-  sh -c "wget -qO /b.sh https://raw.githubusercontent.com/taylanaksongur/akilli-ev/main/ihost-koprusu/baslat.sh && sh /b.sh"
+  --eval=require("child_process").execSync("wget -qO /b.sh https://raw.githubusercontent.com/taylanaksongur/akilli-ev/main/ihost-koprusu/baslat.sh && sh /b.sh",{stdio:"inherit"})
   ```
 - **Yeniden başlatma:** her zaman
 
