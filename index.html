@@ -1426,8 +1426,9 @@ async function ihostIstek(yol,govde){
   let tk=null;try{tk=localStorage.getItem('aksi-oturum')}catch(e){}   /* Aksi oturum belirteci (hesap.js) */
   if(!tk)throw new Error('Önce Aksi’de giriş yap');
   const h={'Content-Type':'application/json',Authorization:'Bearer '+tk};
-  let r;try{r=await fetch(IHOST_TABAN+yol,{method:govde?'POST':'GET',headers:h,body:govde?JSON.stringify(govde):undefined,cache:'no-store'})}
-  catch(e){throw new Error('Köprüye ulaşılamadı')}
+  const ac=new AbortController(),to=setTimeout(()=>ac.abort(),8000);
+  let r;try{r=await fetch(IHOST_TABAN+yol,{method:govde?'POST':'GET',headers:h,body:govde?JSON.stringify(govde):undefined,cache:'no-store',signal:ac.signal})}
+  catch(e){throw new Error(e&&e.name==='AbortError'?'Yanıt gelmedi (zaman aşımı)':'Köprüye ulaşılamadı')}finally{clearTimeout(to)}
   const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.hata||('Hata '+r.status));return j}
 async function ihostListe(goster){const m=$('#ihostMsg');if(goster)m.textContent='Bağlanıyor…';
   try{const j=await ihostIstek('/cihazlar');IHLIST=j.cihazlar||[];
@@ -1440,6 +1441,7 @@ async function ihostEslestir(){const m=$('#ihostMsg');m.textContent='Eşleştiri
   try{await ihostIstek('/eslestir',{});m.textContent='Eşleşti';ihostListe(true)}catch(e){m.textContent=e.message}}
 /* iHost'taki gerçek durumu panele yansıt (yalnız değişenler, sunucuya geri yazmadan) */
 function ihostDurumAl(){if(!IHLIST)return;let n=0;
+  for(const id in DEVST){const a=ACC[id],c=a&&IHLIST.find(x=>x.id===a.extId);if(DEVST[id].err&&(!c||c.cevrimici!==false)){delete DEVST[id];n++}}
   accList().forEach(a=>{if((a.src!=='iHost'&&a.src!=='Meross')||!a.extId)return;const c=IHLIST.find(x=>x.id===a.extId);if(!c||c.acik==null)return;
     if(!!a.on!==c.acik){a.on=c.acik;n++}if(a.dim&&c.parlaklik!=null&&a.bri!==c.parlaklik){a.bri=c.parlaklik;n++}});
   if(n){afterChange(false)}}
@@ -1462,16 +1464,18 @@ document.addEventListener('change',e=>{if(!edit)return;
   else if(e.target.id==='fExt'&&e.target.tagName==='SELECT'&&(edit.src==='iHost'||edit.src==='Meross')){const c=(IHLIST||[]).find(x=>x.id===e.target.value);
     readForm();if(c&&(!edit.name.trim()||/^(Işık|Lamba|Spot|Aksesuar)/i.test(edit.name)))edit.name=c.ad.split(' · ').pop();if(c&&c.dimmer)edit.dim=true;renderSide()}});
 /* Paneldeki her açma/kapama ve parlaklık değişikliği iHost'a gider */
+var DEVST={};let errQ=[],errT=0;
+function errToast(name,msg){errQ.push(name);clearTimeout(errT);errT=setTimeout(()=>{toast(errQ.length===1?errQ[0]+': '+msg:`${errQ.length} ışık: ${msg}`);errQ=[]},300)}
 const _patchAcc=patchAcc;
-patchAcc=function(id,patch){const a=ACC[id];const r=_patchAcc(id,patch);
+patchAcc=function(id,patch){const a=ACC[id];const prev=a?{on:a.on,bri:a.bri}:null;const r=_patchAcc(id,patch);
   if(a&&(a.src==='iHost'||a.src==='Meross')&&a.extId&&ihostHazir()&&('on' in patch||'bri' in patch)){
     const g={};if('on' in patch)g.acik=!!patch.on;if('bri' in patch&&Number.isFinite(patch.bri))g.parlaklik=patch.bri;
-    DEVST[id]={p:1};ihostIstek('/cihaz/'+encodeURIComponent(a.extId),g).then(()=>{delete DEVST[id]}).catch(e=>{DEVST[id]={err:1};toast(a.name+': '+e.message)})}
+    DEVST[id]={p:1};ihostIstek('/cihaz/'+encodeURIComponent(a.extId),g).then(()=>{delete DEVST[id]}).catch(e=>{DEVST[id]={err:1};if(prev&&ACC[id])_patchAcc(id,prev);errToast(a.name,e.message)})}
   return r};
 if(ihostHazir()){ihostListe(false);setInterval(()=>{if(!document.hidden)ihostListe(false)},15000);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)ihostListe(false)})}
 /* Işık düğmeleri (balon modu): ışık nesnesinden yanındaki düğmeye kısa kılavuz çizgisi */
-const BAL={on:false};var DEVST={};
+const BAL={on:false};
 (function(){
   let on=false,running=false,sig='',pos={},listOpen=false;try{on=localStorage.getItem('balonMod')==='1'}catch(e){}
   const stage=document.getElementById('stage');if(!stage)return;
@@ -1485,7 +1489,9 @@ const BAL={on:false};var DEVST={};
   more.onclick=()=>{listOpen=!listOpen;sig=''};
   const marks={};
   function pulse(ids){const objs=(T&&T.EMIS||[]).filter(o=>ids.includes(o.userData.id));if(!objs.length)return;const t0=performance.now();
-    (function f(){const t=(performance.now()-t0)/650;const k=t>=1?1:1+0.9*Math.sin(Math.PI*t);objs.forEach(o=>o.scale.setScalar(k));T.kick&&T.kick();if(t<1)requestAnimationFrame(f)})()}
+    objs.forEach(o=>{if(o.material&&o.material.color)o.userData.c0=o.material.color.clone()});
+    (function f(){const t=(performance.now()-t0)/650,sn=t>=1?0:Math.sin(Math.PI*t),k=1+0.9*sn;
+      objs.forEach(o=>{const a=ACC[o.userData.id];if(a&&a.kind==='strip'){if(o.userData.c0)o.material.color.copy(o.userData.c0).lerp(new THREE.Color('#ffffff'),sn)}else o.scale.setScalar(k)});T.kick&&T.kick();if(t<1)requestAnimationFrame(f)})()}
   const flip=id=>{const a=ACC[id];if(!a)return;const now=!a.on;patchAcc(id,{on:now});pulse([id]);toast(`${a.name} ${now?'açıldı':'kapatıldı'}`);sig=''};
   const flipGrp=(ids,name)=>{const any=ids.some(id=>ACC[id]&&ACC[id].on);ids.forEach(id=>{if(ACC[id]&&!!ACC[id].on===any)patchAcc(id,{on:!any})});pulse(ids);toast(`${name}: ${any?'kapatıldı':'açıldı'}`);sig=''};
   function set(v,first){BAL.on=on=v;btn.classList.toggle('act',v);btn.setAttribute('aria-pressed',String(v));ov.hidden=!v;sig='';
