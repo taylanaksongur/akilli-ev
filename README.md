@@ -2,8 +2,10 @@
 
 Evin akıllı ev kontrol paneli. Önce web'den test, sonra iOS/Android uygulamaları.
 
-- **Kontrol:** Giriş katının 3B modeli; ışıklar, LED şeritler, perdeler ve Cosa termostat kartı.
-- **Ayarlar:** Aksesuar ekleme ve plan üzerinde yerleştirme, senaryolar, bağlantı alanları.
+- **Kontrol:** Üç katın (Kat 1, Kat 2, Kat 3) 3B modeli; ışıklar, LED şeritler, sensörler, perdeler ve Cosa termostat kartı.
+- **Ayarlar:** Seçili katın planında aksesuar ekleme ve yerleştirme, senaryolar, bağlantı alanları.
+
+Sürüm: 1.1
 - **Cihazlar:** SONOFF iHost (Zigbee) ve Meross; termostat Homebridge üzerinden.
 
 ## Dosyalar
