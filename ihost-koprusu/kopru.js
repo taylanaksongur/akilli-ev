@@ -130,9 +130,12 @@ async function mrTara() {
   if (mrTaraniyor || !MR.key || !MR.cihazlar.length) return;
   mrTaraniyor = true; mrSonTarama = Date.now();
   try {
-    const ag = (CUBE.match(/\/\/(\d+\.\d+\.\d+)\.\d+/) || [])[1];
-    if (!ag) return;
-    const ips = Array.from({ length: 254 }, (_, i) => `${ag}.${i + 1}`);
+    const m = CUBE.match(/\/\/(\d+)\.(\d+)\.(\d+)\.\d+/);
+    if (!m) return;
+    /* Deco gibi ağlar /22 kullanır (ör. 192.168.68.0–192.168.71.255): bulunduğu 4'lü bloğun hepsi taranır */
+    const b0 = +m[3] - (+m[3] % 4), ags = (process.env.MEROSS_AGLAR || '').split(',').filter(Boolean);
+    if (!ags.length) for (let k = 0; k < 4; k++) ags.push(`${m[1]}.${m[2]}.${b0 + k}`);
+    const ips = ags.flatMap(ag => Array.from({ length: 254 }, (_, i) => `${ag}.${i + 1}`));
     const bul = {}, yanit = [];
     for (let i = 0; i < ips.length; i += 24) await Promise.all(ips.slice(i, i + 24).map(async ip => {
       try { const j = await mrYerel(ip, '', 'GET', 'Appliance.System.All', {}, 2500);
@@ -143,6 +146,7 @@ async function mrTara() {
       } catch { }
     }));
     console.log('Meross yanıt veren adresler:', yanit.length ? yanit.join(' | ') : 'yok');
+    MR.sonTarama = { zaman: Date.now(), aglar: ags, yanit };
     MR.cihazlar.forEach(c => { if (bul[c.uuid]) c.ip = bul[c.uuid]; });
     mrKaydet();
     console.log('Meross tarama:', Object.keys(bul).length, 'cihaz bulundu');
@@ -157,8 +161,8 @@ async function mrBaglan(b) {
     kanallar: (d.channels || [{}]).map((k, i) => ({ no: i, ad: k.devName || '' })),
     ip: (MR.cihazlar.find(x => x.uuid === d.uuid) || {}).ip || '' })) };
   mrKaydet();
-  await mrTara();
-  return { cihaz: MR.cihazlar.length, bulunan: MR.cihazlar.filter(c => c.ip).length };
+  mrTara();   // arka planda (1-2 dk)
+  return { cihaz: MR.cihazlar.length, bulunan: MR.cihazlar.filter(c => c.ip).length, taraniyor: true };
 }
 /* Panel listesine Meross kanalları: id = meross:<uuid>:<kanal> */
 async function mrListe() {
@@ -233,7 +237,11 @@ http.createServer(async (req, res) => {
     }
     if (yol === '/meross/tara' && req.method === 'POST') {
       if (k.rol !== 'yonetici') return yanit(res, 403, { hata: 'Yalnız yönetici' });
-      await mrTara(); return yanit(res, 200, { bulunan: MR.cihazlar.filter(c => c.ip).length, cihaz: MR.cihazlar.length });
+      mrTara(); return yanit(res, 200, { bulunan: MR.cihazlar.filter(c => c.ip).length, cihaz: MR.cihazlar.length, taraniyor: true });
+    }
+    if (yol === '/meross/durum' && req.method === 'GET') {
+      return yanit(res, 200, { taraniyor: mrTaraniyor, son: MR.sonTarama || null,
+        cihazlar: MR.cihazlar.map(c => ({ ad: c.ad, ip: c.ip || null })), surum: 3 });
     }
     if (yol === '/cihazlar' && req.method === 'GET') {
       const [ih, mr] = await Promise.all([
