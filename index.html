@@ -243,7 +243,7 @@ input[type=text],input[type=number],select{width:100%;background:var(--panel-2);
         <button role="tab" id="tab-kontrol" aria-selected="true" data-view="kontrol">Kontrol</button>
         <button role="tab" id="tab-ayarlar" aria-selected="false" data-view="ayarlar">Ayarlar</button>
       </nav>
-      <span class="chip demo" title="Cihazlar henüz bağlanmadı; değişiklikler sadece bu panelde">● Demo · v2.0</span>
+      <span class="chip demo" title="Cihazlar henüz bağlanmadı; değişiklikler sadece bu panelde">● Demo · v2.1</span>
     </div>
   </header>
 
@@ -257,7 +257,7 @@ input[type=text],input[type=number],select{width:100%;background:var(--panel-2);
       <div class="rooms-ov" id="roomsOv" aria-label="Odalar"></div>
       <div class="cam" id="camWin" hidden role="dialog" aria-label="Kamera görüntüsü"></div>
       <div class="stage-msg" id="stageMsg"></div>
-      <div class="hint">Tek parmak: döndür · İki parmak: kaydır ve yakınlaş · Farede sağ tık veya Shift ile sürükle: kaydır · Boş yere çift dokun: görünümü sıfırla · Aksesuara dokun: aç / kapat · Kameraya dokun: görüntüyü aç · <span id="ver">Sürüm 2.0</span></div>
+      <div class="hint">Tek parmak: döndür · İki parmak: kaydır ve yakınlaş · Farede sağ tık veya Shift ile sürükle: kaydır · Boş yere çift dokun: görünümü sıfırla · Aksesuara dokun: aç / kapat · Kameraya dokun: görüntüyü aç · <span id="ver">Sürüm 2.1</span></div>
     </div>
   </section>
 
@@ -287,10 +287,10 @@ input[type=text],input[type=number],select{width:100%;background:var(--panel-2);
     <div class="setup-grid">
       <form class="card conn" id="camForm" autocomplete="off">
         <h3>Kameralar (Imou)</h3>
-        <p class="note">Kameralar Imou bulutundan, evin kamera köprüsü (Cloudflare Worker) üzerinden canlı gelir. Kamera listesi Imou hesabından otomatik alınır. Görüntü yalnızca kamera penceresi açıkken akar, kapatınca durur. SD az veri harcar, HD daha net. Şifre yalnızca bu cihazda saklanır. Şifre boşsa 3B modelden örnek görüntü gösterilir.</p>
+        <p class="note">Kameralar Imou bulutundan, tekne paneliyle ortak kamera köprüsü (imou-kamera, Cloudflare Worker) üzerinden canlı gelir. Kamera listesi Imou hesabından otomatik alınır. Görüntü yalnızca kamera penceresi açıkken akar, kapatınca durur. SD az veri harcar, HD daha net. Şifre yalnızca bu cihazda saklanır. Şifre boşsa 3B modelden örnek görüntü gösterilir.</p>
         <label class="f" for="camApi">Köprü adresi<input type="text" id="camApi" inputmode="url" autocapitalize="off" spellcheck="false"></label>
         <div class="row" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px">
-          <label class="f" for="camPass">Kamera şifresi<input type="password" id="camPass" placeholder="köprüdeki PANEL_KEY" autocomplete="off"></label>
+          <label class="f" for="camPass">Kamera şifresi<input type="password" id="camPass" placeholder="tekne panelindeki kamera şifresi" autocomplete="off"></label>
           <label class="f" for="camQ">Kalite<select id="camQ"><option value="sd">SD (az veri)</option><option value="hd">HD (4MP)</option></select></label>
         </div>
         <div class="row"><button type="submit" class="btn">Kameraları kaydet</button><button type="button" class="btn ghost" id="camListBtn">Listeyi yenile</button><span class="note" id="camMsg"></span></div>
@@ -1191,10 +1191,12 @@ function camMode(t){const o=$('#camMode');if(o)o.textContent=t}
 function camErr(show){const e=$('#camErr');if(e)e.hidden=!show}
 function camFail(){camErr(true);camChip('lost','Görüntü yok')}
 /* tekne panelindeki yöntem: köprüden /live?cam=<ad> (X-Key şifre) → {sd,hd} HLS adresi */
-const CAM_API='https://imou-ev.aksongur.workers.dev';
-const CAMKEY='aksongur-kamera-v2';let CAMCFG={api:CAM_API,pass:'',q:'sd'};
+const CAM_API='https://imou-kamera.aksongur.workers.dev';
+const CAMKEY='aksongur-kamera-v3';let CAMCFG={api:CAM_API,pass:'',q:'sd'};
 try{const j=JSON.parse(localStorage.getItem(CAMKEY)||'null');if(j)CAMCFG=Object.assign(CAMCFG,j)}catch(e){}
+/* tekne paneli aynı adresten (taylanaksongur.github.io) açılıyorsa onun kayıtlı köprü şifresini kullan */
 let camFromBoat=false;
+if(!CAMCFG.pass){try{const b=JSON.parse(localStorage.getItem('tekne-kamera-v2')||'null');if(b&&b.pass){CAMCFG.pass=b.pass;camFromBoat=true}}catch(e){}}
 let camFails=0,camRetry=null,camReq=0;
 function camFail(msg){clearTimeout(camRetry);const id=camId,a=ACC[id];camStop();camErr(true);camChip('lost','Bağlantı yok');const t=$('#camErrT');if(t)t.textContent=msg;
   camFails++;if(a&&camFails<3&&!/şifre|önizleme/i.test(msg))camRetry=setTimeout(()=>{if(camId===id&&!document.hidden)camPlay(ACC[id])},5000*camFails)}

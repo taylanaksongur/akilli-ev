@@ -1,15 +1,17 @@
 /*
- * Aksongur ev — Imou kamera köprüsü (Cloudflare Worker)
+ * Aksongur — Imou kamera köprüsü (Cloudflare Worker: imou-kamera.aksongur.workers.dev)
+ * Tekne paneli ve ev paneli aynı köprüyü kullanır.
  *
- * Panel bu köprüye "X-Key" başlığıyla gelir; köprü Imou Open Platform'a kendi anahtarlarıyla bağlanır.
+ * Paneller bu köprüye "X-Key" başlığıyla gelir; köprü Imou Open Platform'a kendi anahtarlarıyla bağlanır.
  *   GET /cams              → {cams:[{key,name,model,online}]}   hesaptaki kameralar (kanal başına bir kayıt)
  *   GET /live?cam=<key>    → {sd,hd}                             canlı HLS adresleri
+ *     <key> = "seriNo:kanal" (ev paneli) ya da tekne panelinin kısa adları: "on" (tekne_ön), "arka" (tekne_arka)
  *
- * Cloudflare'de tanımlanacak değişkenler (Settings → Variables and Secrets):
- *   IMOU_APP_ID      Imou geliştirici konsolundaki AppId
- *   IMOU_APP_SECRET  Imou geliştirici konsolundaki AppSecret      (Secret olarak)
- *   PANEL_KEY        Panelde "Kamera şifresi" alanına yazılacak şifre (Secret olarak)
- *   IMOU_BASE        (isteğe bağlı) varsayılan Orta Avrupa: https://openapi-fk.easy4ip.com
+ * Cloudflare değişkenleri (Settings → Variables and Secrets). Köprüde zaten tanımlı olan adlar da kabul edilir:
+ *   AppId      : IMOU_APP_ID  | APP_ID  | IMOU_APPID | APPID
+ *   AppSecret  : IMOU_APP_SECRET | APP_SECRET | IMOU_SECRET | APPSECRET    (Secret)
+ *   Şifre      : PANEL_KEY | CAM_KEY | KEY | X_KEY | PASSWORD | PASS | API_KEY | CAMERA_KEY (Secret)
+ *   IMOU_BASE  : (isteğe bağlı) varsayılan Orta Avrupa: https://openapi-fk.easy4ip.com
  */
 const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'X-Key', 'access-control-allow-methods': 'GET, OPTIONS' };
 const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { ...CORS, 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
@@ -37,6 +39,17 @@ function md5(str) {
     a0 = (a0 + A) >>> 0; b0 = (b0 + B) >>> 0; c0 = (c0 + C) >>> 0; d0 = (d0 + D) >>> 0;
   }
   return [a0, b0, c0, d0].map(v => [0, 8, 16, 24].map(s => ((v >>> s) & 255).toString(16).padStart(2, '0')).join('')).join('');
+}
+
+/* değişken adları: köprüde önceden tanımlanmış adlar da çalışsın */
+const pick1 = (env, names) => { for (const n of names) if (env[n]) return String(env[n]); return ''; };
+function cfg(env) {
+  return {
+    IMOU_APP_ID: pick1(env, ['IMOU_APP_ID', 'APP_ID', 'IMOU_APPID', 'APPID', 'APPLICATION_ID']),
+    IMOU_APP_SECRET: pick1(env, ['IMOU_APP_SECRET', 'APP_SECRET', 'IMOU_SECRET', 'APPSECRET', 'IMOU_APPSECRET']),
+    PANEL_KEY: pick1(env, ['PANEL_KEY', 'CAM_KEY', 'KEY', 'X_KEY', 'PASSWORD', 'PASS', 'API_KEY', 'CAMERA_KEY', 'SECRET_KEY', 'ACCESS_KEY']),
+    IMOU_BASE: pick1(env, ['IMOU_BASE', 'IMOU_API', 'API_BASE', 'BASE_URL'])
+  };
 }
 
 /* ---- Imou Open API ---- */
@@ -90,7 +103,20 @@ async function cameras(env) {
 }
 
 /* canlı yayın: HD = ana akış (0), SD = alt akış (1); yayın zaten varsa liveList'ten alınır */
+/* tekne panelinin kısa adları → hesaptaki cihaz (ada göre bulunur) */
+const ALIAS = { on: /tekne.?(ö|o)n/i, arka: /tekne.?arka/i };
+let CAMS_CACHE = null, CAMS_AT = 0;
+async function camList(env) { if (CAMS_CACHE && Date.now() - CAMS_AT < 10 * 60000) return CAMS_CACHE; CAMS_CACHE = await cameras(env); CAMS_AT = Date.now(); return CAMS_CACHE; }
+async function resolveKey(env, key) {
+  if (key.includes(':')) return key;
+  const re = ALIAS[key.toLowerCase()];
+  const list = await camList(env);
+  const hit = list.find(c => re ? re.test(c.name) : c.name.toLowerCase() === key.toLowerCase() || c.key.split(':')[0] === key);
+  if (!hit) throw Object.assign(new Error(`“${key}” adında kamera bulunamadı`), { http: 404 });
+  return hit.key;
+}
 async function live(env, key) {
+  key = await resolveKey(env, key);
   const [deviceId, channelId = '0'] = key.split(':');
   if (!deviceId) throw Object.assign(new Error('Kamera seçilmedi'), { http: 400 });
   const pick = streams => {
@@ -119,13 +145,14 @@ async function live(env, key) {
 }
 
 export default {
-  async fetch(req, env) {
+  async fetch(req, rawEnv) {
+    const env = cfg(rawEnv);
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
     const url = new URL(req.url);
     if (!env.PANEL_KEY || req.headers.get('X-Key') !== env.PANEL_KEY) return json({ error: 'unauthorized' }, 401);
-    if (!env.IMOU_APP_ID || !env.IMOU_APP_SECRET) return json({ error: 'Köprüde IMOU_APP_ID / IMOU_APP_SECRET tanımlı değil' }, 500);
+    if (!env.IMOU_APP_ID || !env.IMOU_APP_SECRET) return json({ error: 'Köprüde Imou AppId / AppSecret değişkeni bulunamadı' }, 500);
     try {
-      if (url.pathname === '/cams') return json({ cams: await cameras(env) });
+      if (url.pathname === '/cams') { CAMS_CACHE = await cameras(env); CAMS_AT = Date.now(); return json({ cams: CAMS_CACHE }); }
       if (url.pathname === '/live') return json(await live(env, url.searchParams.get('cam') || ''));
       return json({ error: 'not found' }, 404);
     } catch (e) { return json({ error: e.message, code: e.code || '' }, e.http || 502); }
