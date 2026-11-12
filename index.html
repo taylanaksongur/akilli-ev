@@ -1072,7 +1072,7 @@ function renderSide(){
         <label class="f" for="fRoom">Oda<select id="fRoom">${Object.keys(ROOMS).map(r=>`<option value="${r}" ${edit.room===r?'selected':''}>${ROOMS[r].name}</option>`).join('')}</select></label>
         <label class="f" for="fSrc">Kaynak<select id="fSrc">${SRC.map(s=>`<option ${edit.src===s?'selected':''}>${s}</option>`).join('')}</select></label>
       </div>
-      <label class="f" for="fExt">Cihaz kimliği<input type="text" id="fExt" ${edit.src==='iHost'?'list="ihostList"':''} value="${esc(edit.extId)}" placeholder="${edit.kind==='camera'?'Imou seri numarası (ör. 7F0A1B2C3D4E5)':'iHost cihaz ID / Meross UUID (bağlantıdan sonra)'}"></label>
+      <label class="f" for="fExt">${edit.src==='iHost'?'iHost cihazı':'Cihaz kimliği'}${edit.src==='iHost'&&ihostSecenek()?`<select id="fExt"><option value="">— Seç —</option>${ihostSecenek()}</select>`:`<input type="text" id="fExt" value="${esc(edit.extId)}" placeholder="${edit.kind==='camera'?'Imou seri numarası (ör. 7F0A1B2C3D4E5)':edit.src==='iHost'?'iHost listesi yükleniyor… (Ayarlar → Bağlantıyı dene)':'Meross UUID (bağlantıdan sonra)'}">`}</label>
       ${edit.kind==='camera'?camPickerHTML():''}
       ${k.light?`<label class="check" for="fDim"><input type="checkbox" id="fDim" ${edit.dim?'checked':''}>Parlaklık ayarlanabilir (dimmer)</label>`:''}
       ${edit.kind==='strip'?`<label class="check" for="fLoop"><input type="checkbox" id="fLoop" ${edit.loop?'checked':''}>Kapalı döngü (son nokta ilkine bağlansın)</label>`:''}
@@ -1381,7 +1381,8 @@ async function ihostIstek(yol,govde){
 async function ihostListe(goster){const m=$('#ihostMsg');if(goster)m.textContent='Bağlanıyor…';
   try{const j=await ihostIstek('/cihazlar');IHLIST=j.cihazlar||[];
     $('#ihostList').innerHTML=IHLIST.map(c=>`<option value="${esc(c.id)}">${esc(c.ad)}${c.cevrimici?'':' (çevrim dışı)'}</option>`).join('');
-    m.textContent=`Bağlı · ${IHLIST.length} cihaz`;ihostDurumAl()}
+    m.textContent=`Bağlı · ${IHLIST.length} cihaz`;ihostDurumAl();
+    if(edit&&edit.src==='iHost'&&!document.querySelector('select#fExt')){readForm();renderSide()}}
   catch(e){if(goster)m.textContent=e.message}}
 async function ihostEslestir(){const m=$('#ihostMsg');m.textContent='Eşleştiriliyor…';
   try{await ihostIstek('/eslestir',{});m.textContent='Eşleşti';ihostListe(true)}catch(e){m.textContent=e.message}}
@@ -1390,6 +1391,14 @@ function ihostDurumAl(){if(!IHLIST)return;let n=0;
   accList().forEach(a=>{if(a.src!=='iHost'||!a.extId)return;const c=IHLIST.find(x=>x.id===a.extId);if(!c||c.acik==null)return;
     if(!!a.on!==c.acik){a.on=c.acik;n++}if(a.dim&&c.parlaklik!=null&&a.bri!==c.parlaklik){a.bri=c.parlaklik;n++}});
   if(n){afterChange(false)}}
+/* Düzenleme formunda iHost cihaz seçimi (iPhone'da datalist açılmadığı için gerçek liste) */
+function ihostSecenek(){if(!IHLIST||!IHLIST.length)return '';const cur=edit&&edit.extId;
+  const ops=IHLIST.map(c=>`<option value="${esc(c.id)}" ${c.id===cur?'selected':''}>${esc(c.ad)}${c.cevrimici?'':' (çevrim dışı)'}</option>`);
+  if(cur&&!IHLIST.some(c=>c.id===cur))ops.unshift(`<option value="${esc(cur)}" selected>${esc(cur)}</option>`);return ops.join('')}
+document.addEventListener('change',e=>{if(!edit)return;
+  if(e.target.id==='fSrc'){readForm();renderSide();if(edit.src==='iHost'&&!IHLIST)ihostListe(false).then(()=>{if(edit)renderSide()})}
+  else if(e.target.id==='fExt'&&e.target.tagName==='SELECT'&&edit.src==='iHost'){const c=(IHLIST||[]).find(x=>x.id===e.target.value);
+    readForm();if(c&&(!edit.name.trim()||/^(Işık|Lamba|Spot|Aksesuar)/i.test(edit.name)))edit.name=c.ad.split(' · ').pop();if(c&&c.dimmer)edit.dim=true;renderSide()}});
 /* Paneldeki her açma/kapama ve parlaklık değişikliği iHost'a gider */
 const _patchAcc=patchAcc;
 patchAcc=function(id,patch){const a=ACC[id];const r=_patchAcc(id,patch);
