@@ -5,7 +5,7 @@ Evin akıllı ev kontrol paneli. Önce web'den test, sonra iOS/Android uygulamal
 - **Kontrol:** Üç katın (Kat 1, Kat 2, Kat 3) 3B modeli; ışıklar, LED şeritler, sensörler, perdeler, Imou kameralar (dokununca sağ üstte canlı görüntü, çift tıkla tam ekran) ve Cosa termostat kartı.
 - **Ayarlar:** Seçili katın planında aksesuar ekleme ve yerleştirme, senaryolar, bağlantı alanları.
 
-Sürüm: 1.4
+Sürüm: 1.5
 - **Cihazlar:** SONOFF iHost (Zigbee) ve Meross; termostat Homebridge üzerinden; Imou kameralar tekne panelindeki köprüden (imou-kamera Cloudflare Worker, `/live?cam=<ad>`, X-Key şifresi) HLS olarak canlı gelir; şifre yoksa 3B modelden örnek görüntü. Kamera, Ayarlar'da köprüden alınan listeden seçilir.
 
 ## Dosyalar

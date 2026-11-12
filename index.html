@@ -243,7 +243,7 @@ input[type=text],input[type=number],select{width:100%;background:var(--panel-2);
         <button role="tab" id="tab-kontrol" aria-selected="true" data-view="kontrol">Kontrol</button>
         <button role="tab" id="tab-ayarlar" aria-selected="false" data-view="ayarlar">Ayarlar</button>
       </nav>
-      <span class="chip demo" title="Cihazlar henüz bağlanmadı; değişiklikler sadece bu panelde">● Demo · v1.4</span>
+      <span class="chip demo" title="Cihazlar henüz bağlanmadı; değişiklikler sadece bu panelde">● Demo · v1.5</span>
     </div>
   </header>
 
@@ -257,7 +257,7 @@ input[type=text],input[type=number],select{width:100%;background:var(--panel-2);
       <div class="rooms-ov" id="roomsOv" aria-label="Odalar"></div>
       <div class="cam" id="camWin" hidden role="dialog" aria-label="Kamera görüntüsü"></div>
       <div class="stage-msg" id="stageMsg"></div>
-      <div class="hint">Tek parmak: döndür · İki parmak: kaydır ve yakınlaş · Farede sağ tık veya Shift ile sürükle: kaydır · Boş yere çift dokun: görünümü sıfırla · Aksesuara dokun: aç / kapat · Kameraya dokun: görüntüyü aç · <span id="ver">Sürüm 1.4</span></div>
+      <div class="hint">Tek parmak: döndür · İki parmak: kaydır ve yakınlaş · Farede sağ tık veya Shift ile sürükle: kaydır · Boş yere çift dokun: görünümü sıfırla · Aksesuara dokun: aç / kapat · Kameraya dokun: görüntüyü aç · <span id="ver">Sürüm 1.5</span></div>
     </div>
   </section>
 
@@ -1193,6 +1193,9 @@ function camFail(){camErr(true);camChip('lost','Görüntü yok')}
 /* tekne panelindeki yöntem: köprüden /live?cam=<ad> (X-Key şifre) → {sd,hd} HLS adresi */
 const CAMKEY='aksongur-kamera-v1';let CAMCFG={api:'https://imou-kamera.aksongur.workers.dev',pass:'',q:'sd'};
 try{const j=JSON.parse(localStorage.getItem(CAMKEY)||'null');if(j)CAMCFG=Object.assign(CAMCFG,j)}catch(e){}
+/* tekne paneli aynı adresten (taylanaksongur.github.io) açılıyorsa onun kayıtlı kamera şifresini kullan */
+let camFromBoat=false;
+if(!CAMCFG.pass){try{const b=JSON.parse(localStorage.getItem('tekne-kamera-v2')||'null');if(b&&b.pass){CAMCFG.pass=b.pass;if(b.q)CAMCFG.q=b.q;camFromBoat=true}}catch(e){}}
 let camFails=0,camRetry=null,camReq=0;
 function camFail(msg){clearTimeout(camRetry);const id=camId,a=ACC[id];camStop();camErr(true);camChip('lost','Bağlantı yok');const t=$('#camErrT');if(t)t.textContent=msg;
   camFails++;if(a&&camFails<3&&!/şifre|önizleme/i.test(msg))camRetry=setTimeout(()=>{if(camId===id&&!document.hidden)camPlay(ACC[id])},5000*camFails)}
@@ -1242,7 +1245,7 @@ async function loadCamList(){if(camListBusy)return;
   CAMLIST=list;camListNote=note;camListBusy=false;try{localStorage.setItem(CAMLKEY,JSON.stringify({list,note}))}catch(e){}
   renderCamFound();if(edit&&edit.kind==='camera'){readForm();renderSide()}}
 function camListNow(){return CAMLIST||CAM_KNOWN}
-function renderCamFound(){const el=$('#camFound');if(!el)return;const m=$('#camMsg');if(m)m.textContent=camListNote||(CAMCFG.pass?'Şifre bu cihazda kayıtlı':'Şifre yok: örnek görüntü gösteriliyor');
+function renderCamFound(){const el=$('#camFound');if(!el)return;const m=$('#camMsg');if(m)m.textContent=(camFromBoat?'Şifre tekne panelinden alındı. ':'')+(camListNote||(CAMCFG.pass?'Şifre bu cihazda kayıtlı':'Şifre yok: örnek görüntü gösteriliyor'));
   el.innerHTML=(CAMLIST||[]).map(c=>`<span>${esc(c.name)}<small>${esc(c.key)}</small></span>`).join('')}
 function camPickerHTML(){const list=camListNow(),cur=edit.cam||'';const inList=list.some(c=>c.key===cur);const manual=edit.camManual||(cur&&!inList);
   const used=new Set(Object.values(ACC).filter(a=>a.kind==='camera'&&a.id!==edit.id&&a.cam).map(a=>a.cam));
@@ -1260,7 +1263,7 @@ function applyCamCfg(){$('#camApi').value=CAMCFG.api;$('#camPass').value=CAMCFG.
 $('#camForm').addEventListener('submit',e=>{e.preventDefault();
   CAMCFG={api:$('#camApi').value.trim()||'https://imou-kamera.aksongur.workers.dev',pass:$('#camPass').value.trim(),q:$('#camQ').value};
   try{localStorage.setItem(CAMKEY,JSON.stringify(CAMCFG))}catch(x){}applyCamCfg();toast('Kameralar kaydedildi');loadCamList();camFails=0;if(camId)renderCam();renderRooms()});
-applyCamCfg();renderCamFound();
+applyCamCfg();renderCamFound();if(CAMCFG.pass&&(!CAMLIST||camFromBoat))setTimeout(loadCamList,500);
 const fmtOsd=()=>new Date().toLocaleString('tr-TR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});
 function renderCam(){const a=ACC[camId];if(!a)return closeCam();
   const cams=camsHere(),n=Math.max(1,cams.findIndex(c=>c.id===a.id)+1);
