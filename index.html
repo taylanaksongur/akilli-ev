@@ -241,7 +241,7 @@ input[type=text],input[type=number],select{width:100%;background:var(--panel-2);
         <button role="tab" id="tab-kontrol" aria-selected="true" data-view="kontrol">Kontrol</button>
         <button role="tab" id="tab-ayarlar" aria-selected="false" data-view="ayarlar">Ayarlar</button>
       </nav>
-      <span class="chip demo" title="Cihazlar henüz bağlanmadı; değişiklikler sadece bu panelde">● Demo · v1.2</span>
+      <span class="chip demo" title="Cihazlar henüz bağlanmadı; değişiklikler sadece bu panelde">● Demo · v1.3</span>
     </div>
   </header>
 
@@ -255,7 +255,7 @@ input[type=text],input[type=number],select{width:100%;background:var(--panel-2);
       <div class="rooms-ov" id="roomsOv" aria-label="Odalar"></div>
       <div class="cam" id="camWin" hidden role="dialog" aria-label="Kamera görüntüsü"></div>
       <div class="stage-msg" id="stageMsg"></div>
-      <div class="hint">Tek parmak: döndür · İki parmak: kaydır ve yakınlaş · Farede sağ tık veya Shift ile sürükle: kaydır · Boş yere çift dokun: görünümü sıfırla · Aksesuara dokun: aç / kapat · Kameraya dokun: görüntüyü aç · <span id="ver">Sürüm 1.2</span></div>
+      <div class="hint">Tek parmak: döndür · İki parmak: kaydır ve yakınlaş · Farede sağ tık veya Shift ile sürükle: kaydır · Boş yere çift dokun: görünümü sıfırla · Aksesuara dokun: aç / kapat · Kameraya dokun: görüntüyü aç · <span id="ver">Sürüm 1.3</span></div>
     </div>
   </section>
 
@@ -283,6 +283,16 @@ input[type=text],input[type=number],select{width:100%;background:var(--panel-2);
     </div>
 
     <div class="setup-grid">
+      <form class="card conn" id="camForm" autocomplete="off">
+        <h3>Kameralar (Imou)</h3>
+        <p class="note">Kameralar Imou bulutundan, tekne panelindeki köprü (Cloudflare Worker) üzerinden canlı gelir. Görüntü yalnızca kamera penceresi açıkken akar, kapatınca durur. SD az veri harcar, HD daha net. Şifre yalnızca bu cihazda saklanır. Şifre boşsa 3B modelden örnek görüntü gösterilir.</p>
+        <label class="f" for="camApi">Köprü adresi<input type="text" id="camApi" inputmode="url" autocapitalize="off" spellcheck="false"></label>
+        <div class="row" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px">
+          <label class="f" for="camPass">Kamera şifresi<input type="password" id="camPass" placeholder="kamera köprüsü şifresi" autocomplete="off"></label>
+          <label class="f" for="camQ">Kalite<select id="camQ"><option value="sd">SD (az veri)</option><option value="hd">HD (4MP)</option></select></label>
+        </div>
+        <div class="row"><button type="submit" class="btn">Kameraları kaydet</button><span class="note" id="camMsg"></span></div>
+      </form>
       <form class="card conn" id="pinForm" autocomplete="off">
         <h3>Ayarlar şifresi</h3>
         <label class="f" for="pinOld">Mevcut şifre<input type="password" inputmode="numeric" id="pinOld" maxlength="12"></label>
@@ -1021,17 +1031,17 @@ function submitEdit(){
   const prev=ACC[id]||{};
   const a={id,name:edit.name.trim(),kind:edit.kind,room:edit.room,src:edit.src,extId:(edit.extId||'').trim(),dim:!!edit.dim&&!!KINDS[edit.kind].light,
     pts:edit.pts,on:prev.on??(edit.kind!=='sensor'&&edit.kind!=='climate'&&edit.kind!=='camera'),bri:prev.bri??100};
-  if(edit.kind==='camera'){a.stream=(edit.stream||'').trim();a.camType=edit.camType||'mjpeg'}
+  if(edit.kind==='camera')a.cam=(edit.cam||'').trim();
   if(edit.kind==='strip'){a.h=Math.max(0.05,Math.min(2.1,+edit.h||0.5));a.loop=!!edit.loop&&edit.pts.length>2}
   if(edit.kind==='climate')a.setT=prev.setT??22;
   const fl=prev.floor||FLOOR;if(fl!==1)a.floor=fl;
   if(prev.example&&!isNew)a.example=true;
   edit=null;selId=id;saveAcc(a);
-  if(a.kind==='camera'&&/^http:\/\//i.test(a.stream)&&location.protocol==='https:')toast('Kaydedildi, ama http:// adresi bu sayfada açılmaz');else toast(isNew?`${a.name} eklendi`:`${a.name} güncellendi`);
+  toast(isNew?`${a.name} eklendi`:`${a.name} güncellendi`);
 }
 function readForm(){if(!edit)return;const v=id=>document.getElementById(id);
   if(v('fName'))edit.name=v('fName').value;if(v('fRoom'))edit.room=v('fRoom').value;if(v('fSrc'))edit.src=v('fSrc').value;
-  if(v('fExt'))edit.extId=v('fExt').value;if(v('fStream'))edit.stream=v('fStream').value;if(v('fCamType'))edit.camType=v('fCamType').value;if(v('fDim'))edit.dim=v('fDim').checked;if(v('fH'))edit.h=v('fH').value;if(v('fLoop'))edit.loop=v('fLoop').checked}
+  if(v('fExt'))edit.extId=v('fExt').value;if(v('fCamKey'))edit.cam=v('fCamKey').value;if(v('fDim'))edit.dim=v('fDim').checked;if(v('fH'))edit.h=v('fH').value;if(v('fLoop'))edit.loop=v('fLoop').checked}
 function updateFormStatus(){const s=$('#fPts');if(s&&edit)s.textContent=edit.pts.length?`${edit.pts.length} nokta seçildi`:`Plana dokun: ${needPts(edit.kind)}`}
 
 function renderSide(){
@@ -1045,9 +1055,8 @@ function renderSide(){
         <label class="f" for="fSrc">Kaynak<select id="fSrc">${SRC.map(s=>`<option ${edit.src===s?'selected':''}>${s}</option>`).join('')}</select></label>
       </div>
       <label class="f" for="fExt">Cihaz kimliği<input type="text" id="fExt" value="${esc(edit.extId)}" placeholder="${edit.kind==='camera'?'Imou seri numarası (ör. 7F0A1B2C3D4E5)':'iHost cihaz ID / Meross UUID (bağlantıdan sonra)'}"></label>
-      ${edit.kind==='camera'?`<div class="two"><label class="f" for="fStream">Görüntü adresi<input type="text" id="fStream" value="${esc(edit.stream||'')}" placeholder="ör. https://192.168.1.60/video.mjpg" inputmode="url" autocapitalize="off" spellcheck="false"></label>
-        <label class="f" for="fCamType">Tür<select id="fCamType">${[['mjpeg','MJPEG akışı'],['snap','JPEG anlık görüntü'],['hls','HLS (m3u8)']].map(([v,l])=>`<option value="${v}" ${(edit.camType||'mjpeg')===v?'selected':''}>${l}</option>`).join('')}</select></label></div>
-      <p class="note">MJPEG akışı doğrudan oynar; anlık görüntü (JPEG) seçilirse saniyede bir yenilenir. Sayfa https üzerinden açıldığı için kamera adresi de https olmalı, yoksa tarayıcı görüntüyü engeller. Adres boşsa 3B modelden örnek görüntü gösterilir.</p>`:''}
+      ${edit.kind==='camera'?`<label class="f" for="fCamKey">Köprüdeki kamera adı<input type="text" id="fCamKey" value="${esc(edit.cam||'')}" placeholder="ör. salon" autocapitalize="off" spellcheck="false"></label>
+      <p class="note">Köprüde bu kameraya verilen ad (tekne panelinde ön kamera için <code>on</code>, arka kamera için <code>arka</code>). Boşsa ya da Ayarlar → Kameralar'da şifre yoksa 3B modelden örnek görüntü gösterilir.</p>`:''}
       ${k.light?`<label class="check" for="fDim"><input type="checkbox" id="fDim" ${edit.dim?'checked':''}>Parlaklık ayarlanabilir (dimmer)</label>`:''}
       ${edit.kind==='strip'?`<label class="check" for="fLoop"><input type="checkbox" id="fLoop" ${edit.loop?'checked':''}>Kapalı döngü (son nokta ilkine bağlansın)</label>`:''}
       ${edit.kind==='strip'?`<label class="f" for="fH">Yükseklik (m)<input type="number" id="fH" min="0.05" max="2.1" step="0.05" value="${edit.h}"></label>`:''}
@@ -1171,7 +1180,6 @@ const HLS_SRC='https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.13/hls.min.js';
 let hlsLoad=null;
 function loadHls(){if(window.Hls)return Promise.resolve(window.Hls);
   return hlsLoad||(hlsLoad=new Promise((ok,no)=>{const sc=document.createElement('script');sc.src=HLS_SRC;sc.onload=()=>ok(window.Hls);sc.onerror=()=>{hlsLoad=null;no(new Error('hls'))};document.head.appendChild(sc)}))}
-const camTypeOf=a=>a.camType||(/m3u8/i.test(a.stream||'')?'hls':/\.(jpe?g|png)(\?|#|$)|snapshot/i.test(a.stream||'')?'snap':'mjpeg');
 const camsHere=()=>accList().filter(c=>c.kind==='camera').sort((x,y)=>x.name.localeCompare(y.name,'tr'));
 function camStop(){if(camHls){try{camHls.destroy()}catch(e){}camHls=null}clearInterval(camSnap);camSnap=null;camDemo=null;
   const v=camWin.querySelector('video');if(v){try{v.pause();v.removeAttribute('src');v.load()}catch(e){}}
@@ -1180,37 +1188,55 @@ function camChip(cls,txt){const c=$('#camChip');if(c){c.className='chip '+cls;c.
 function camMode(t){const o=$('#camMode');if(o)o.textContent=t}
 function camErr(show){const e=$('#camErr');if(e)e.hidden=!show}
 function camFail(){camErr(true);camChip('lost','Görüntü yok')}
-function camPlay(a){const u=(a.stream||'').trim(),vw=$('#camView');camStop();vw.querySelectorAll('video,img,canvas').forEach(n=>n.remove());camErr(false);
-  if(!u){const cv=document.createElement('canvas');cv.width=960;cv.height=540;cv.setAttribute('aria-label',a.name+' örnek görüntü');vw.prepend(cv);
+/* tekne panelindeki yöntem: köprüden /live?cam=<ad> (X-Key şifre) → {sd,hd} HLS adresi */
+const CAMKEY='aksongur-kamera-v1';let CAMCFG={api:'https://imou-kamera.aksongur.workers.dev',pass:'',q:'sd'};
+try{const j=JSON.parse(localStorage.getItem(CAMKEY)||'null');if(j)CAMCFG=Object.assign(CAMCFG,j)}catch(e){}
+let camFails=0,camRetry=null,camReq=0;
+function camFail(msg){clearTimeout(camRetry);const id=camId,a=ACC[id];camStop();camErr(true);camChip('lost','Bağlantı yok');const t=$('#camErrT');if(t)t.textContent=msg;
+  camFails++;if(a&&camFails<3&&!/şifre|önizleme/i.test(msg))camRetry=setTimeout(()=>{if(camId===id&&!document.hidden)camPlay(ACC[id])},5000*camFails)}
+async function camPlay(a){const key=(a.cam||'').trim(),vw=$('#camView');if(!vw)return;camStop();clearTimeout(camRetry);vw.querySelectorAll('video,img,canvas').forEach(n=>n.remove());camErr(false);
+  if(!CAMCFG.pass||!key){const cv=document.createElement('canvas');cv.width=960;cv.height=540;cv.setAttribute('aria-label',a.name+' örnek görüntü');vw.prepend(cv);
     camDemo={id:a.id,cv,t:0};needs=true;camChip('demo','Örnek');camMode('ÖRNEK · 3B model görüntüsü');return}
-  const t=camTypeOf(a);camChip('demo','Bekleniyor');camMode(t==='snap'?'ANLIK GÖRÜNTÜ':'CANLI');
-  const ok=()=>{if(camId!==a.id)return;camErr(false);camChip('live','Canlı')};
-  if(t==='mjpeg'||t==='snap'){const im=new Image();im.alt=a.name+' canlı görüntü';vw.prepend(im);im.onload=ok;im.onerror=()=>{if(camId===a.id)camFail()};
-    const bust=()=>u+(u.includes('?')?'&':'?')+'t='+Date.now();im.src=t==='snap'?bust():u;
-    if(t==='snap')camSnap=setInterval(()=>{if(!document.hidden)im.src=bust()},1000);return}
-  const v=document.createElement('video');v.muted=true;v.autoplay=true;v.playsInline=true;v.setAttribute('playsinline','');vw.prepend(v);
-  v.addEventListener('playing',ok);v.addEventListener('error',()=>{if(camId===a.id)camFail()});
-  if(v.canPlayType('application/vnd.apple.mpegurl')){v.src=u;v.play().catch(()=>{});return}
-  loadHls().then(Hls=>{if(camId!==a.id)return;if(!Hls.isSupported()){camFail();return}
-    camHls=new Hls({lowLatencyMode:true,liveSyncDurationCount:2});camHls.on(Hls.Events.ERROR,(e,d)=>{if(d&&d.fatal&&camId===a.id)camFail()});
-    camHls.loadSource(u);camHls.attachMedia(v);v.play().catch(()=>{})}).catch(()=>{if(camId===a.id)camFail()})}
+  const req=++camReq,q=CAMCFG.q==='hd'?'HD':'SD';camChip('demo','Bağlanıyor');camMode('CANLI · '+q);
+  const v=document.createElement('video');v.muted=true;v.autoplay=true;v.playsInline=true;v.setAttribute('playsinline','');v.setAttribute('disablepictureinpicture','');vw.prepend(v);
+  v.addEventListener('playing',()=>{if(camId!==a.id)return;camFails=0;camErr(false);camChip('live','Canlı')});
+  v.addEventListener('loadedmetadata',()=>{if(v.videoWidth)camMode('CANLI · '+q+' · '+v.videoWidth+'×'+v.videoHeight)});
+  try{let r;try{r=await fetch(CAMCFG.api.replace(/\/+$/,'')+'/live?cam='+encodeURIComponent(key),{headers:{'X-Key':CAMCFG.pass},cache:'no-store'})}
+      catch(e){throw new Error('Kamera köprüsüne ulaşılamadı. Bu önizleme dış bağlantıya izin vermiyor olabilir; paneli GitHub sayfasından aç.')}
+    const j=await r.json().catch(()=>({}));if(req!==camReq||camId!==a.id)return;
+    if(!r.ok)throw new Error(r.status===401?'Kamera şifresi yanlış. Ayarlar → Kameralar (Imou).':r.status===404?`Köprüde “${key}” adında kamera yok.`:(j.error||'Köprü hata verdi ('+r.status+')'));
+    const url=CAMCFG.q==='hd'?(j.hd||j.sd):(j.sd||j.hd);if(!url)throw new Error('Yayın adresi gelmedi');
+    if(v.canPlayType('application/vnd.apple.mpegurl')){v.src=url;v.onerror=()=>{if(camId===a.id)camFail('Kamera yanıt vermiyor; çevrimdışı olabilir.')};v.play().catch(()=>{});return}
+    const Hls=await loadHls().catch(()=>null);if(req!==camReq||camId!==a.id)return;
+    if(!Hls||!Hls.isSupported())throw new Error('Bu tarayıcı canlı yayını oynatamıyor');
+    camHls=new Hls({liveSyncDurationCount:2,manifestLoadingMaxRetry:4,levelLoadingMaxRetry:4});
+    camHls.on(Hls.Events.ERROR,(e,d)=>{if(!d||!d.fatal)return;if(d.type===Hls.ErrorTypes.MEDIA_ERROR){camHls.recoverMediaError();return}if(camId===a.id)camFail('Kamera yanıt vermiyor; çevrimdışı olabilir.')});
+    camHls.loadSource(url);camHls.attachMedia(v);v.play().catch(()=>{})}
+  catch(e){if(req===camReq&&camId===a.id)camFail(e.message)}}
+document.addEventListener('visibilitychange',()=>{if(!camId)return;if(document.hidden){camStop();clearTimeout(camRetry)}else{camFails=0;const a=ACC[camId];if(a)camPlay(a)}});
+function applyCamCfg(){$('#camApi').value=CAMCFG.api;$('#camPass').value=CAMCFG.pass;$('#camQ').value=CAMCFG.q;
+  $('#camMsg').textContent=CAMCFG.pass?'Şifre bu cihazda kayıtlı':'Şifre yok: örnek görüntü gösteriliyor'}
+$('#camForm').addEventListener('submit',e=>{e.preventDefault();
+  CAMCFG={api:$('#camApi').value.trim()||'https://imou-kamera.aksongur.workers.dev',pass:$('#camPass').value.trim(),q:$('#camQ').value};
+  try{localStorage.setItem(CAMKEY,JSON.stringify(CAMCFG))}catch(x){}applyCamCfg();toast('Kameralar kaydedildi');camFails=0;if(camId)renderCam();renderRooms()});
+applyCamCfg();
 const fmtOsd=()=>new Date().toLocaleString('tr-TR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});
 function renderCam(){const a=ACC[camId];if(!a)return closeCam();
-  const cams=camsHere(),n=Math.max(1,cams.findIndex(c=>c.id===a.id)+1),u=(a.stream||'').trim();
-  const mixed=/^http:\/\//i.test(u)&&location.protocol==='https:';
+  const cams=camsHere(),n=Math.max(1,cams.findIndex(c=>c.id===a.id)+1);
   camWin.innerHTML=`<div class="cam-head"><strong>${esc(a.name)}</strong><span class="chip demo" id="camChip">● Örnek</span><small>${esc(ROOMS[a.room]?.name||'')} · Kat ${FLOOR}</small>
     <button type="button" data-camfull="1" aria-label="Tam ekran" title="Tam ekran"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
     <button type="button" data-camclose="1" aria-label="Kamerayı kapat" title="Kapat"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
     <div class="cam-view" id="camView" title="Çift tıkla: tam ekran"><div class="cam-osd"><i class="rec"></i>CAM ${n} · ${esc(a.name.toLocaleUpperCase('tr'))}</div><div class="cam-osd r" id="camOsd">${fmtOsd()}</div><div class="cam-osd b" id="camMode"></div>
-      <div class="cam-msg" id="camErr" hidden>${'<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h11v10H3zM14 10.5l7-3.5v10l-7-3.5z"/></svg>'}<b>Görüntü alınamadı</b><span>${mixed?'Adres http:// ile başlıyor. Bu sayfa https olduğu için tarayıcı görüntüyü engeller; kameranın https adresini kullan.':'Adresi ve kameranın aynı ağda olduğunu kontrol et.'}</span><button type="button" class="btn small ghost" data-camretry="1">Tekrar dene</button></div></div>
+      <div class="cam-msg" id="camErr" hidden>${'<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h11v10H3zM14 10.5l7-3.5v10l-7-3.5z"/></svg>'}<b>Görüntü alınamadı</b><span id="camErrT">Kamera çevrimdışı olabilir.</span><button type="button" class="btn small ghost" data-camretry="1">Tekrar dene</button></div></div>
     <div class="cam-foot"><span class="hint2">Çift tıkla: tam ekran</span>${cams.length>1?cams.map(c=>`<button type="button" data-camsw="${c.id}" aria-pressed="${c.id===a.id}">${esc(c.name)}</button>`).join(''):''}</div>`;
-  camSig=a.id+'|'+u+'|'+camTypeOf(a)+'|'+a.name;camPlay(a)}
+  camSig=camSigOf(a);camFails=0;camPlay(a)}
 function openCam(id){if(!ACC[id])return;closePop();camId=id;camWin.hidden=false;renderCam();
   clearInterval(camClock);camClock=setInterval(()=>{const o=$('#camOsd');if(o)o.textContent=fmtOsd()},1000);update3D();renderRooms()}
-function closeCam(){if(!camId&&camWin.hidden)return;setMax(false);if(document.fullscreenElement)document.exitFullscreen?.().catch(()=>{});
+function closeCam(){if(!camId&&camWin.hidden)return;clearTimeout(camRetry);camReq++;setMax(false);if(document.fullscreenElement)document.exitFullscreen?.().catch(()=>{});
   camStop();clearInterval(camClock);camId=null;camSig='';camWin.hidden=true;camWin.innerHTML='';update3D();renderRooms()}
 function refreshCam(){if(!camId)return;const a=ACC[camId];if(!a||!accF(a)||a.kind!=='camera')return closeCam();
-  if(a.id+'|'+(a.stream||'').trim()+'|'+camTypeOf(a)+'|'+a.name!==camSig)renderCam()}
+  if(camSigOf(a)!==camSig)renderCam()}
+const camSigOf=a=>[a.id,a.cam||'',CAMCFG.pass,CAMCFG.q,CAMCFG.api,a.name].join('|');
 /* tam ekran: önce tarayıcının tam ekranı, olmazsa pencereyi ekranı kaplayacak şekilde büyüt */
 function setMax(on){camWin.classList.toggle('max',on);needs=true}
 function toggleFull(){const vw=$('#camView');if(!vw)return;
@@ -1231,7 +1257,7 @@ camWin.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)ret
 let openRoom=null;
 const UNIT_ORDER=['camera','spot','pendant','sconce','lamp','strip','plug','cover','climate','sensor'];
 function unitBtn(a){const k=KINDS[a.kind]||KINDS.spot,ic=icon(a.kind in KINDS?a.kind:'spot','currentColor',15);
-  if(a.kind==='camera')return`<button type="button" class="ubtn cam-u" data-cam="${a.id}" aria-pressed="${camId===a.id}">${ic}<span>${esc(a.name)}</span><small>${camId===a.id?'Açık':a.stream?'Canlı izle':'Örnek görüntü'}</small></button>`;
+  if(a.kind==='camera')return`<button type="button" class="ubtn cam-u" data-cam="${a.id}" aria-pressed="${camId===a.id}">${ic}<span>${esc(a.name)}</span><small>${camId===a.id?'Açık':a.cam&&CAMCFG.pass?'Canlı izle':'Örnek görüntü'}</small></button>`;
   if(a.kind==='sensor')return`<div class="ubtn info">${ic}<span>${esc(a.name)}</span><small>Sensör</small></div>`;
   if(a.kind==='climate')return`<div class="ubtn info">${ic}<span>${esc(a.name)}</span><small>Hedef ${(a.setT??22).toFixed(1).replace('.',',')}°</small></div>`;
   const on=!!a.on,st=a.kind==='cover'?(on?'Açık':'Kapalı'):on?(a.dim&&a.bri<100?'Açık · %'+a.bri:'Açık'):'Kapalı';
