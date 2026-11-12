@@ -71,6 +71,14 @@ nav.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--
 .bal-ov svg{position:absolute;inset:0;width:100%;height:100%}
 .bal-m{position:absolute;transform:translate(-50%,-50%);width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;pointer-events:auto;cursor:pointer;border:2px solid #8c94c9;background:rgba(14,18,48,.92);color:#c9cff5;padding:0;-webkit-tap-highlight-color:transparent}
 .bal-m.on{background:#ffbf5e;color:#3a2200;border-color:#ffe2a8;box-shadow:0 0 0 3px rgba(255,191,94,.25)}
+.bal-m::before{content:"";position:absolute;inset:-6px;border-radius:50%;background:conic-gradient(#ffe2a8 var(--p,0%),rgba(255,255,255,.12) 0);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 2px));mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 2px));opacity:0;pointer-events:none}
+.bal-m.ring::before{opacity:1}
+.bal-m.grp span{position:absolute;right:-6px;bottom:-6px;min-width:20px;height:20px;padding:0 4px;box-sizing:border-box;border-radius:10px;background:var(--accent);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #0e1230}
+.bal-m.part{border-style:dashed;border-color:#ffbf5e}
+.bal-m.pend::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:2px solid transparent;border-top-color:#fff;animation:balspin .8s linear infinite}
+.bal-m.na{background:#2a2e48;color:#7a7f99;border-color:#565b7a}
+.bal-m.na i{position:absolute;right:-2px;top:-2px;width:11px;height:11px;border-radius:50%;background:var(--danger,#ff5d6c);border:2px solid #0e1230}
+@keyframes balspin{to{transform:rotate(360deg)}}
 .bal-m:focus-visible,.bal-x:focus-visible,.bal-list button:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .bal-l{position:absolute;transform:translateX(-50%);font-size:11px;color:#e3e6fb;white-space:nowrap;pointer-events:none;text-shadow:0 1px 2px #000,0 0 4px #000}
 .bal-x{position:absolute;right:12px;pointer-events:auto;padding:8px 12px;border-radius:12px;border:1px solid var(--line);background:rgba(24,31,69,.92);color:var(--fg);font-size:12px;font-weight:600}
@@ -280,7 +288,7 @@ input[type=text],input[type=number],select{width:100%;background:var(--panel-2);
       <div class="rooms-ov" id="roomsOv" aria-label="Odalar"></div>
       <div class="cam" id="camWin" hidden role="dialog" aria-label="Kamera görüntüsü"></div>
       <div class="stage-msg" id="stageMsg"></div>
-      <div class="hint">Tek parmak: döndür · İki parmak: kaydır ve yakınlaş · Farede sağ tık veya Shift ile sürükle: kaydır · Boş yere çift dokun: görünümü sıfırla · Aksesuara dokun: aç / kapat · Kameraya dokun: görüntüyü aç · <span id="ver">Sürüm 2.3</span></div>
+      <div class="hint">Tek parmak: döndür · İki parmak: kaydır ve yakınlaş · Farede sağ tık veya Shift ile sürükle: kaydır · Boş yere çift dokun: görünümü sıfırla · Aksesuara dokun: aç / kapat · Kameraya dokun: görüntüyü aç · <span id="ver">Sürüm 2.4</span></div>
     </div>
   </section>
 
@@ -906,6 +914,7 @@ function init3D(){
     if(a.kind==='climate'){openPop(a,e);return}
     const now=!a.on;patchAcc(id,{on:now});
     toast(a.kind==='cover'?`${a.name} ${now?'açılıyor':'kapanıyor'}`:`${a.name} ${now?'açıldı':'kapatıldı'}`)}
+  T.kick=()=>{needs=true};
   (function loop(){requestAnimationFrame(loop);let anim=false;if(T.flyStep())anim=true;
     T.PL.forEach(l=>{const t=l.userData.target;if(Math.abs(l.intensity-t)>0.005){l.intensity+=(t-l.intensity)*0.15;anim=true}else l.intensity=t});
     T.HALO.forEach(h=>{const t=h.userData.target,o=h.material.opacity;if(Math.abs(o-t)>0.005){h.material.opacity+=(t-o)*0.15;anim=true}else h.material.opacity=t});
@@ -1457,12 +1466,12 @@ const _patchAcc=patchAcc;
 patchAcc=function(id,patch){const a=ACC[id];const r=_patchAcc(id,patch);
   if(a&&(a.src==='iHost'||a.src==='Meross')&&a.extId&&ihostHazir()&&('on' in patch||'bri' in patch)){
     const g={};if('on' in patch)g.acik=!!patch.on;if('bri' in patch&&Number.isFinite(patch.bri))g.parlaklik=patch.bri;
-    ihostIstek('/cihaz/'+encodeURIComponent(a.extId),g).catch(e=>toast(a.name+': '+e.message))}
+    DEVST[id]={p:1};ihostIstek('/cihaz/'+encodeURIComponent(a.extId),g).then(()=>{delete DEVST[id]}).catch(e=>{DEVST[id]={err:1};toast(a.name+': '+e.message)})}
   return r};
 if(ihostHazir()){ihostListe(false);setInterval(()=>{if(!document.hidden)ihostListe(false)},15000);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)ihostListe(false)})}
 /* Işık düğmeleri (balon modu): ışık nesnesinden yanındaki düğmeye kısa kılavuz çizgisi */
-const BAL={on:false};
+const BAL={on:false};var DEVST={};
 (function(){
   let on=false,running=false,sig='',pos={},listOpen=false;try{on=localStorage.getItem('balonMod')==='1'}catch(e){}
   const stage=document.getElementById('stage');if(!stage)return;
@@ -1475,7 +1484,10 @@ const BAL={on:false};
   const list=document.createElement('div');list.className='bal-list';list.hidden=true;ov.appendChild(list);
   more.onclick=()=>{listOpen=!listOpen;sig=''};
   const marks={};
-  const flip=id=>{const a=ACC[id];if(!a)return;const now=!a.on;patchAcc(id,{on:now});toast(`${a.name} ${now?'açıldı':'kapatıldı'}`);sig=''};
+  function pulse(ids){const objs=(T&&T.EMIS||[]).filter(o=>ids.includes(o.userData.id));if(!objs.length)return;const t0=performance.now();
+    (function f(){const t=(performance.now()-t0)/650;const k=t>=1?1:1+0.9*Math.sin(Math.PI*t);objs.forEach(o=>o.scale.setScalar(k));T.kick&&T.kick();if(t<1)requestAnimationFrame(f)})()}
+  const flip=id=>{const a=ACC[id];if(!a)return;const now=!a.on;patchAcc(id,{on:now});pulse([id]);toast(`${a.name} ${now?'açıldı':'kapatıldı'}`);sig=''};
+  const flipGrp=(ids,name)=>{const any=ids.some(id=>ACC[id]&&ACC[id].on);ids.forEach(id=>{if(ACC[id]&&!!ACC[id].on===any)patchAcc(id,{on:!any})});pulse(ids);toast(`${name}: ${any?'kapatıldı':'açıldı'}`);sig=''};
   function set(v,first){BAL.on=on=v;btn.classList.toggle('act',v);btn.setAttribute('aria-pressed',String(v));ov.hidden=!v;sig='';
     try{localStorage.setItem('balonMod',v?'1':'0')}catch(e){}
     if(v&&!first)toast('Işıkları yanlarındaki yuvarlak düğmelerden aç/kapa');
@@ -1484,10 +1496,14 @@ const BAL={on:false};
   function mark(id){let m=marks[id];if(m)return m;
     const b=document.createElement('button');b.type='button';b.className='bal-m';
     const l=document.createElement('div');l.className='bal-l';l.setAttribute('aria-hidden','true');
-    b.onclick=()=>flip(id);ov.insertBefore(b,more);ov.insertBefore(l,more);return marks[id]={b,l,st:null}}
-  function paint(m,a){const st=(a.on?1:0)+a.kind+a.name;if(m.st===st)return;m.st=st;
-    m.b.classList.toggle('on',!!a.on);m.b.setAttribute('aria-pressed',String(!!a.on));m.b.setAttribute('aria-label',`${a.name}: ${a.on?'açık':'kapalı'}`);
-    m.b.innerHTML=icon(a.kind,'currentColor',20);m.l.textContent=a.name}
+    const mm={b,l,st:null,fn:null};b.onclick=()=>mm.fn?mm.fn():flip(id);ov.insertBefore(b,more);ov.insertBefore(l,more);return marks[id]=mm}
+  const devNa=a=>{if(!IHLIST||!a.extId||(a.src!=='iHost'&&a.src!=='Meross'))return false;const c=IHLIST.find(x=>x.id===a.extId);return !!c&&c.cevrimici===false};
+  function paint(m,o){const st=JSON.stringify(o);if(m.st===st)return;m.st=st;const b=m.b;
+    b.classList.toggle('on',o.on===1);b.classList.toggle('part',o.on===.5);b.classList.toggle('grp',!!o.n);b.classList.toggle('pend',!!o.pend);b.classList.toggle('na',!!o.na);
+    b.classList.toggle('ring',o.on>0&&o.bri!=null&&!o.na);b.style.setProperty('--p',(o.bri||0)+'%');
+    b.setAttribute('aria-pressed',o.on===.5?'mixed':String(o.on===1));
+    b.setAttribute('aria-label',`${o.name}${o.n?` (${o.n} ışık)`:''}: ${o.na?'yanıt vermiyor':o.on===1?'açık':o.on===.5?'kısmen açık':'kapalı'}${o.on>0&&o.bri!=null?`, %${o.bri}`:''}`);
+    b.innerHTML=icon(o.kind,'currentColor',20)+(o.n?`<span>${o.n}</span>`:'')+(o.na?'<i></i>':'');m.l.textContent=o.name}
   const v=window.THREE?new THREE.Vector3():null;
   const box=el=>{if(!el||el.hidden||!el.offsetParent)return null;const r=el.getBoundingClientRect(),sr=stage.getBoundingClientRect();
     if(r.width<2||r.right<sr.left||r.left>sr.right||r.bottom<sr.top||r.top>sr.bottom)return null;return{l:r.left-sr.left-6,t:r.top-sr.top-6,r:r.right-sr.left+6,b:r.bottom-sr.top+6}};
@@ -1497,13 +1513,17 @@ const BAL={on:false};
     let k=W+'|'+H+'|'+FLOOR+'|'+listOpen+'|'+cam.matrixWorld.elements.map(e=>e.toFixed(3)).join(',');
     const lights=[],obst=[];
     (T.HIT||[]).forEach(h=>{const a=ACC[h.userData.id];if(!a||!accF(a)||!KINDS[a.kind])return;if(KINDS[a.kind].light)lights.push(h);else obst.push(h)});
-    lights.forEach(h=>{const a=ACC[h.userData.id];k+='|'+a.id+(a.on?1:0)+a.name});
+    lights.forEach(h=>{const a=ACC[h.userData.id];k+='|'+a.id+(a.on?1:0)+a.name+a.bri+(a.room||'')});k+=JSON.stringify(DEVST)+(IHLIST?IHLIST.length+IHLIST.filter(c=>c.cevrimici===false).map(c=>c.id).join():'');
     if(k===sig)return;sig=k;
     const proj=h=>{h.getWorldPosition(v);v.project(cam);return v.z>1?null:{x:(v.x+1)/2*W,y:(1-v.y)/2*H}};
     const groups={};lights.forEach(h=>{const q=proj(h);if(!q)return;const id=h.userData.id,g=groups[id]||(groups[id]={x:0,y:0,n:0});g.x+=q.x;g.y+=q.y;g.n++});
     const zones=[box(document.getElementById('roomsOv')),box(document.getElementById('thermo')),box(stage.querySelector('.stage-ctrl'))].filter(Boolean);
     const busy=[];obst.forEach(h=>{const q=proj(h);if(q)busy.push({x:q.x,y:q.y,w:30,h:30})});
-    const P=Object.keys(groups).sort().map(id=>{const g=groups[id];return{id,x:g.x/g.n,y:g.y/g.n}});
+    let P=Object.keys(groups).sort().map(id=>{const g=groups[id];return{id,ids:[id],x:g.x/g.n,y:g.y/g.n}});
+    const byRoom={};P.forEach(p=>{const r=ACC[p.id].room;if(r)(byRoom[r]=byRoom[r]||[]).push(p)});
+    for(const r in byRoom){const L=byRoom[r];if(L.length<2)continue;const cx=L.reduce((t,p)=>t+p.x,0)/L.length,cy=L.reduce((t,p)=>t+p.y,0)/L.length;
+      if(L.every(p=>Math.hypot(p.x-cx,p.y-cy)<48)){P=P.filter(p=>!L.includes(p));P.push({id:'room:'+r,ids:L.map(p=>p.id),room:r,x:cx,y:cy})}}
+    P.sort((a,b)=>a.id<b.id?-1:1);
     Object.values(groups).forEach(g=>busy.push({x:g.x/g.n,y:g.y/g.n,w:14,h:14}));
     const DIR=[[-1,-1],[1,-1],[-1,0],[1,0],[0,-1],[-1,1],[1,1],[0,1]],DIST=[60,95,135];
     const placed=[],seen={},over=[];let d='',dOn='';
@@ -1512,14 +1532,18 @@ const BAL={on:false};
       if(zones.some(z=>R>z.l&&L<z.r&&B>z.t&&Tp<z.b))return false;
       if(placed.some(q=>R>q.L-8&&L<q.R+8&&B>q.T-6&&Tp<q.B+6))return false;
       if(busy.some(o=>Math.abs(o.x-x)<(R-L)/2+o.w/2&&o.y>Tp-o.h/2&&o.y<B+o.h/2))return false;return true};
-    P.forEach(p=>{const a=ACC[p.id],wl=Math.min(140,a.name.length*6.2+8);const pref=p.x<W/2?0:1;
+    P.forEach(p=>{const A=p.ids.map(id=>ACC[id]),n=A.filter(x=>x.on).length,grp=!!p.room,a0=A[0];
+      const a={name:grp?((ROOMS[p.room]&&ROOMS[p.room].name)||p.room):a0.name,on:n?1:0},briL=A.filter(x=>x.on&&x.dim&&x.bri!=null).map(x=>x.bri);
+      const o={name:a.name,kind:a0.kind,on:grp?(n===A.length?1:n?.5:0):(a0.on?1:0),bri:briL.length?Math.round(briL.reduce((t,v)=>t+v,0)/briL.length):(n?100:null),
+        n:grp?A.length:0,pend:p.ids.some(id=>DEVST[id]&&DEVST[id].p),na:p.ids.every(id=>(DEVST[id]&&DEVST[id].err)||devNa(ACC[id]))};
+      const wl=Math.min(140,a.name.length*6.2+8);const pref=p.x<W/2?0:1;
       const cand=[];const prev=pos[p.id];if(prev)cand.push(prev);
       DIST.forEach(r=>DIR.forEach((dv,i)=>{const di=(i+pref)%DIR.length;cand.push({di:(pref&&i<2)?1-i:i,r})}));
       let got=null;for(const c of cand){const dv=DIR[c.di],n=Math.hypot(dv[0],dv[1]);const x=p.x+dv[0]/n*c.r,y=p.y+dv[1]/n*c.r;
         if(fits(x,y,wl)){got={x,y,c:{di:c.di,r:c.r}};break}}
-      if(!got){over.push(p.id);delete pos[p.id];return}
+      if(!got){over.push(...p.ids);delete pos[p.id];return}
       pos[p.id]=got.c;seen[p.id]=1;const L=got.x-Math.max(26,wl/2),R=got.x+Math.max(26,wl/2);placed.push({L,R,T:got.y-26,B:got.y+40});
-      const m=mark(p.id);paint(m,a);
+      const m=mark(p.id);paint(m,o);m.fn=grp?()=>flipGrp(p.ids,a.name):null;
       const dx=got.x-p.x,dy=got.y-p.y,len=Math.hypot(dx,dy)||1,ex=got.x-dx/len*23,ey=got.y-dy/len*23;
       const seg=`M${p.x.toFixed(1)},${p.y.toFixed(1)}L${ex.toFixed(1)},${ey.toFixed(1)}`;if(a.on)dOn+=seg;else d+=seg;
       m.b.style.left=got.x+'px';m.b.style.top=got.y+'px';m.l.style.left=got.x+'px';m.l.style.top=(got.y+24)+'px'});
