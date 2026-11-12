@@ -860,7 +860,7 @@ function init3D(){
     if(!R)to={x:HOME.x,z:HOME.z,th:0,ph:0.72,zm:1};
     else{const pts=R.poly.trim().split(/\s+/).map(p=>p.split(',').map(Number));
       const xs=pts.map(p=>X(p[0])),zs=pts.map(p=>Z(p[1]));const x0=Math.min(...xs),x1=Math.max(...xs),z0=Math.min(...zs),z1=Math.max(...zs);
-      const zm=Math.max(0.3,Math.min(1,Math.max((x1-x0)/(2*camHW),(z1-z0)/(2*camHD))*1.35));
+      const zm=Math.max(0.3,Math.min(0.75,Math.max((x1-x0)/(2*camHW),(z1-z0)/(2*camHD))*1.15));
       to={x:(x0+x1)/2,z:(z0+z1)/2,th:theta,ph:0.82,zm}}
     fly={t0:performance.now(),f:{x:target.x,z:target.z,th:theta,ph:phi,zm:zoom},to};needs=true};
   T.flyStep=()=>{if(!fly)return false;const u=Math.min(1,(performance.now()-fly.t0)/650),e=u<.5?2*u*u:1-Math.pow(-2*u+2,2)/2,f=fly.f,t=fly.to;
