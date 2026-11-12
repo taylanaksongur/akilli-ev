@@ -82,6 +82,111 @@ function sadele(c) {
   })];
 }
 
+// ---- Meross: bulut hesabıyla bir kez giriş (anahtar + cihaz listesi), sonra ev ağında yerel HTTP ile kontrol.
+// Şifre saklanmaz; /data/meross.json yalnızca anahtar, belirteç ve cihazları tutar.
+const md5 = s => require('crypto').createHash('md5').update(s).digest('hex');
+const MEROSS_DOSYA = '/data/meross.json';
+let MR = { key: '', token: '', domain: '', cihazlar: [] };
+try { MR = Object.assign(MR, JSON.parse(fs.readFileSync(MEROSS_DOSYA, 'utf8'))); } catch { }
+const mrKaydet = () => { try { fs.mkdirSync('/data', { recursive: true }); fs.writeFileSync(MEROSS_DOSYA, JSON.stringify(MR)); } catch { } };
+const MR_GIZLI = '23x17ahWarFH6w29';
+const rastgele = n => require('crypto').randomBytes(n).toString('hex').slice(0, n).toUpperCase();
+
+async function mrBulut(domain, yol, params, token) {
+  const ts = Date.now(), nonce = rastgele(16), p = Buffer.from(JSON.stringify(params)).toString('base64');
+  const govde = { params: p, sign: md5(MR_GIZLI + ts + nonce + p), timestamp: ts, nonce };
+  const r = await fetch(domain + yol, { method: 'POST',
+    headers: { 'Content-Type': 'application/json', AppVersion: '0.4.6.4', vender: 'meross', AppType: 'MerossIOT', AppLanguage: 'EN',
+      Authorization: 'Basic ' + (token || '') }, body: JSON.stringify(govde) });
+  return r.json();
+}
+async function mrGiris(eposta, sifre, mfa) {
+  let domain = 'https://iotx-eu.meross.com';
+  const veri = { email: eposta, password: md5(sifre), encryption: 1, accountCountryCode: '--', agree: 0,
+    mobileInfo: { deviceModel: 'Aksi', mobileOsVersion: '1', mobileOs: 'Linux', uuid: rastgele(16), carrier: '' } };
+  if (mfa) veri.mfaCode = String(mfa);
+  for (let i = 0; i < 3; i++) {
+    const j = await mrBulut(domain, '/v1/Auth/signIn', veri);
+    if (j.apiStatus === 0 && j.data) return Object.assign(j.data, { domain: j.data.domain || domain });
+    if (j.apiStatus === 1030 && j.data && j.data.domain) { domain = j.data.domain; continue; }   // başka bölge
+    if (j.apiStatus === 1033) throw Object.assign(new Error('İki adımlı doğrulama kodu gerekli'), { durum: 428 });
+    throw Object.assign(new Error('Meross girişi başarısız: ' + (j.info || j.apiStatus)), { durum: 401 });
+  }
+  throw Object.assign(new Error('Meross bölgesi bulunamadı'), { durum: 502 });
+}
+async function mrYerel(ip, uuid, yontem, ns, payload, ms = 1500) {
+  const ts = Math.floor(Date.now() / 1000), mid = md5(rastgele(16) + ts);
+  const ac = new AbortController(), t = setTimeout(() => ac.abort(), ms);
+  try {
+    const r = await fetch(`http://${ip}/config`, { method: 'POST', signal: ac.signal, headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ header: { from: `http://${ip}/config`, messageId: mid, method: yontem, namespace: ns, payloadVersion: 1,
+        sign: md5(mid + MR.key + ts), timestamp: ts, triggerSrc: 'Aksi', uuid: uuid || '' }, payload: payload || {} }) });
+    return await r.json();
+  } finally { clearTimeout(t); }
+}
+/* Ev ağında Meross cihazlarını bul: iHost'un alt ağını tarar, uuid ile eşleştirir */
+let mrTaraniyor = false, mrSonTarama = 0;
+async function mrTara() {
+  if (mrTaraniyor || !MR.key || !MR.cihazlar.length) return;
+  mrTaraniyor = true; mrSonTarama = Date.now();
+  try {
+    const ag = (CUBE.match(/\/\/(\d+\.\d+\.\d+)\.\d+/) || [])[1];
+    if (!ag) return;
+    const ips = Array.from({ length: 254 }, (_, i) => `${ag}.${i + 1}`);
+    const bul = {};
+    for (let i = 0; i < ips.length; i += 32) await Promise.all(ips.slice(i, i + 32).map(async ip => {
+      try { const j = await mrYerel(ip, '', 'GET', 'Appliance.System.All', {}, 900);
+        const u = j && j.payload && j.payload.all && j.payload.all.system && j.payload.all.system.hardware && j.payload.all.system.hardware.uuid;
+        if (u) bul[u] = ip; } catch { }
+    }));
+    MR.cihazlar.forEach(c => { if (bul[c.uuid]) c.ip = bul[c.uuid]; });
+    mrKaydet();
+    console.log('Meross tarama:', Object.keys(bul).length, 'cihaz bulundu');
+  } finally { mrTaraniyor = false; }
+}
+async function mrBaglan(b) {
+  const g = await mrGiris(String(b.eposta || '').trim(), String(b.sifre || ''), b.kod);
+  const j = await mrBulut(g.domain, '/v1/Device/devList', {}, g.token);
+  if (j.apiStatus !== 0) throw Object.assign(new Error('Meross cihaz listesi alınamadı'), { durum: 502 });
+  MR = { key: g.key, token: g.token, domain: g.domain, cihazlar: (j.data || []).map(d => ({
+    uuid: d.uuid, ad: d.devName, tur: d.deviceType,
+    kanallar: (d.channels || [{}]).map((k, i) => ({ no: i, ad: k.devName || '' })),
+    ip: (MR.cihazlar.find(x => x.uuid === d.uuid) || {}).ip || '' })) };
+  mrKaydet();
+  await mrTara();
+  return { cihaz: MR.cihazlar.length, bulunan: MR.cihazlar.filter(c => c.ip).length };
+}
+/* Panel listesine Meross kanalları: id = meross:<uuid>:<kanal> */
+async function mrListe() {
+  if (!MR.key) return [];
+  if (MR.cihazlar.some(c => !c.ip) && Date.now() - mrSonTarama > 10 * 60e3) mrTara();
+  const out = [];
+  await Promise.all(MR.cihazlar.map(async c => {
+    let dur = null;
+    if (c.ip) try {
+      const j = await mrYerel(c.ip, c.uuid, 'GET', 'Appliance.System.All', {});
+      const dg = j.payload && j.payload.all && j.payload.all.digest;
+      dur = {}; ((dg && dg.togglex) || []).forEach(t => dur[t.channel] = t.onoff === 1);
+      if (dg && dg.toggle && 'onoff' in dg.toggle) dur[0] = dg.toggle.onoff === 1;
+    } catch { if (Date.now() - mrSonTarama > 10 * 60e3) mrTara(); }
+    const coklu = c.kanallar.length > 1;
+    (coklu ? c.kanallar.slice(1) : c.kanallar).forEach(k => out.push({
+      id: `meross:${c.uuid}:${k.no}`, ad: coklu ? `${c.ad} · ${k.ad || k.no}` : c.ad, tur: 'switch', kaynak: 'Meross',
+      cevrimici: !!dur, acik: dur ? !!dur[k.no] : null, parlaklik: null, dimmer: false }));
+  }));
+  return out;
+}
+async function mrKomut(id, acik) {
+  const [, uuid, kanal] = id.split(':');
+  const c = MR.cihazlar.find(x => x.uuid === uuid);
+  if (!c) throw Object.assign(new Error('Meross cihazı bulunamadı'), { durum: 404 });
+  if (!c.ip) { mrTara(); throw Object.assign(new Error('Meross cihazı ağda bulunamadı'), { durum: 503 }); }
+  const j = await mrYerel(c.ip, c.uuid, 'SET', 'Appliance.Control.ToggleX', { togglex: { channel: +kanal || 0, onoff: acik ? 1 : 0 } });
+  if (j && j.header && j.header.method === 'ERROR') {   // eski cihazlar: Toggle
+    await mrYerel(c.ip, c.uuid, 'SET', 'Appliance.Control.Toggle', { toggle: { onoff: acik ? 1 : 0 } });
+  }
+}
+
 // ---- HTTP
 function yanit(res, durum, veri) {
   res.writeHead(durum, {
@@ -118,14 +223,29 @@ http.createServer(async (req, res) => {
       try { fs.mkdirSync('/data', { recursive: true }); fs.writeFileSync(TOKEN_DOSYA, cubeToken); } catch { }
       return yanit(res, 200, { ok: true });
     }
+    if (yol === '/meross/giris' && req.method === 'POST') {
+      if (k.rol !== 'yonetici') return yanit(res, 403, { hata: 'Yalnız yönetici' });
+      return yanit(res, 200, await mrBaglan(await govdeOku(req)));
+    }
+    if (yol === '/meross/tara' && req.method === 'POST') {
+      if (k.rol !== 'yonetici') return yanit(res, 403, { hata: 'Yalnız yönetici' });
+      await mrTara(); return yanit(res, 200, { bulunan: MR.cihazlar.filter(c => c.ip).length, cihaz: MR.cihazlar.length });
+    }
     if (yol === '/cihazlar' && req.method === 'GET') {
-      const d = await cube('GET', '/devices');
-      return yanit(res, 200, { cihazlar: (d.device_list || []).flatMap(sadele) });
+      const [ih, mr] = await Promise.all([
+        cubeToken ? cube('GET', '/devices').then(d => (d.device_list || []).flatMap(sadele)) : Promise.resolve([]),
+        mrListe().catch(() => [])]);
+      return yanit(res, 200, { cihazlar: ih.concat(mr), meross: { bagli: !!MR.key, cihaz: MR.cihazlar.length } });
     }
     const m = yol.match(/^\/cihaz\/([^/]+)$/);
     if (m && req.method === 'POST') {
       const b = await govdeOku(req), state = {};
-      const [seri, kanal] = decodeURIComponent(m[1]).split(':');
+      const kimlik = decodeURIComponent(m[1]);
+      if (kimlik.startsWith('meross:')) {
+        if (typeof b.acik !== 'boolean') return yanit(res, 400, { hata: 'acik gerekli' });
+        await mrKomut(kimlik, b.acik); return yanit(res, 200, { ok: true });
+      }
+      const [seri, kanal] = kimlik.split(':');
       if (typeof b.acik === 'boolean') {
         if (kanal) state.toggle = { [kanal]: { toggleState: b.acik ? 'on' : 'off' } };
         else state.power = { powerState: b.acik ? 'on' : 'off' };
