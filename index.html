@@ -117,6 +117,8 @@ nav.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--
 .cam-osd.b{top:auto;bottom:8px}
 .cam-osd .rec{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--danger);margin-right:6px;vertical-align:1px;animation:blink 1.6s infinite}
 .cam-view canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;max-width:100%;pointer-events:none}
+.cam-found{display:flex;flex-wrap:wrap;gap:6px}.cam-found span{font-size:11.5px;padding:4px 9px;border-radius:999px;background:var(--panel-2);color:var(--fg)}.cam-found small{color:var(--muted);font-family:var(--f-mono);margin-left:5px}
+.cam-pick{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end}
 .chip.live{background:rgba(54,211,154,.16);color:var(--ok)}
 .chip.lost{background:rgba(255,107,129,.16);color:var(--danger)}
 .cam-head .chip{padding:3px 8px;font-size:10.5px}
@@ -241,7 +243,7 @@ input[type=text],input[type=number],select{width:100%;background:var(--panel-2);
         <button role="tab" id="tab-kontrol" aria-selected="true" data-view="kontrol">Kontrol</button>
         <button role="tab" id="tab-ayarlar" aria-selected="false" data-view="ayarlar">Ayarlar</button>
       </nav>
-      <span class="chip demo" title="Cihazlar henüz bağlanmadı; değişiklikler sadece bu panelde">● Demo · v1.3</span>
+      <span class="chip demo" title="Cihazlar henüz bağlanmadı; değişiklikler sadece bu panelde">● Demo · v1.4</span>
     </div>
   </header>
 
@@ -255,7 +257,7 @@ input[type=text],input[type=number],select{width:100%;background:var(--panel-2);
       <div class="rooms-ov" id="roomsOv" aria-label="Odalar"></div>
       <div class="cam" id="camWin" hidden role="dialog" aria-label="Kamera görüntüsü"></div>
       <div class="stage-msg" id="stageMsg"></div>
-      <div class="hint">Tek parmak: döndür · İki parmak: kaydır ve yakınlaş · Farede sağ tık veya Shift ile sürükle: kaydır · Boş yere çift dokun: görünümü sıfırla · Aksesuara dokun: aç / kapat · Kameraya dokun: görüntüyü aç · <span id="ver">Sürüm 1.3</span></div>
+      <div class="hint">Tek parmak: döndür · İki parmak: kaydır ve yakınlaş · Farede sağ tık veya Shift ile sürükle: kaydır · Boş yere çift dokun: görünümü sıfırla · Aksesuara dokun: aç / kapat · Kameraya dokun: görüntüyü aç · <span id="ver">Sürüm 1.4</span></div>
     </div>
   </section>
 
@@ -291,7 +293,8 @@ input[type=text],input[type=number],select{width:100%;background:var(--panel-2);
           <label class="f" for="camPass">Kamera şifresi<input type="password" id="camPass" placeholder="kamera köprüsü şifresi" autocomplete="off"></label>
           <label class="f" for="camQ">Kalite<select id="camQ"><option value="sd">SD (az veri)</option><option value="hd">HD (4MP)</option></select></label>
         </div>
-        <div class="row"><button type="submit" class="btn">Kameraları kaydet</button><span class="note" id="camMsg"></span></div>
+        <div class="row"><button type="submit" class="btn">Kameraları kaydet</button><button type="button" class="btn ghost" id="camListBtn">Listeyi yenile</button><span class="note" id="camMsg"></span></div>
+        <div class="cam-found" id="camFound"></div>
       </form>
       <form class="card conn" id="pinForm" autocomplete="off">
         <h3>Ayarlar şifresi</h3>
@@ -1041,7 +1044,7 @@ function submitEdit(){
 }
 function readForm(){if(!edit)return;const v=id=>document.getElementById(id);
   if(v('fName'))edit.name=v('fName').value;if(v('fRoom'))edit.room=v('fRoom').value;if(v('fSrc'))edit.src=v('fSrc').value;
-  if(v('fExt'))edit.extId=v('fExt').value;if(v('fCamKey'))edit.cam=v('fCamKey').value;if(v('fDim'))edit.dim=v('fDim').checked;if(v('fH'))edit.h=v('fH').value;if(v('fLoop'))edit.loop=v('fLoop').checked}
+  if(v('fExt'))edit.extId=v('fExt').value;if(v('fCamKey')){const k=v('fCamKey').value;if(k==='__manual'){edit.camManual=true;edit.cam=v('fCamMan')?v('fCamMan').value:(edit.cam||'')}else{edit.camManual=false;edit.cam=k}}if(v('fDim'))edit.dim=v('fDim').checked;if(v('fH'))edit.h=v('fH').value;if(v('fLoop'))edit.loop=v('fLoop').checked}
 function updateFormStatus(){const s=$('#fPts');if(s&&edit)s.textContent=edit.pts.length?`${edit.pts.length} nokta seçildi`:`Plana dokun: ${needPts(edit.kind)}`}
 
 function renderSide(){
@@ -1055,8 +1058,7 @@ function renderSide(){
         <label class="f" for="fSrc">Kaynak<select id="fSrc">${SRC.map(s=>`<option ${edit.src===s?'selected':''}>${s}</option>`).join('')}</select></label>
       </div>
       <label class="f" for="fExt">Cihaz kimliği<input type="text" id="fExt" value="${esc(edit.extId)}" placeholder="${edit.kind==='camera'?'Imou seri numarası (ör. 7F0A1B2C3D4E5)':'iHost cihaz ID / Meross UUID (bağlantıdan sonra)'}"></label>
-      ${edit.kind==='camera'?`<label class="f" for="fCamKey">Köprüdeki kamera adı<input type="text" id="fCamKey" value="${esc(edit.cam||'')}" placeholder="ör. salon" autocapitalize="off" spellcheck="false"></label>
-      <p class="note">Köprüde bu kameraya verilen ad (tekne panelinde ön kamera için <code>on</code>, arka kamera için <code>arka</code>). Boşsa ya da Ayarlar → Kameralar'da şifre yoksa 3B modelden örnek görüntü gösterilir.</p>`:''}
+      ${edit.kind==='camera'?camPickerHTML():''}
       ${k.light?`<label class="check" for="fDim"><input type="checkbox" id="fDim" ${edit.dim?'checked':''}>Parlaklık ayarlanabilir (dimmer)</label>`:''}
       ${edit.kind==='strip'?`<label class="check" for="fLoop"><input type="checkbox" id="fLoop" ${edit.loop?'checked':''}>Kapalı döngü (son nokta ilkine bağlansın)</label>`:''}
       ${edit.kind==='strip'?`<label class="f" for="fH">Yükseklik (m)<input type="number" id="fH" min="0.05" max="2.1" step="0.05" value="${edit.h}"></label>`:''}
@@ -1095,7 +1097,7 @@ document.addEventListener('click',e=>{
   const t=e.target.closest('[data-view],[data-kind],[data-edit],[data-scene],#addBtn,#fSave,#fCancel,#fDel,#fDelYes,#fDelNo,#clearEx,#clearExYes,#ihostBtn,#merossBtn');if(!t)return;
   if(t.dataset.view){if(t.dataset.view==='ayarlar'&&$('#view-ayarlar').hidden){openLock();return}showView(t.dataset.view);return}
   if(t.dataset.kind){readForm();const old=edit.kind;edit.kind=t.dataset.kind;const n=KINDS[edit.kind].n;
-    if(n!=='many'&&edit.pts.length>n)edit.pts=edit.pts.slice(-n);const mx=KINDS[edit.kind].max;if(mx&&edit.pts.length>mx)edit.pts=edit.pts.slice(-mx);if(!KINDS[edit.kind].light)edit.dim=false;if(edit.kind==='camera'&&edit.src==='iHost')edit.src='Imou';else if(old==='camera'&&edit.kind!=='camera'&&edit.src==='Imou')edit.src='iHost';
+    if(n!=='many'&&edit.pts.length>n)edit.pts=edit.pts.slice(-n);const mx=KINDS[edit.kind].max;if(mx&&edit.pts.length>mx)edit.pts=edit.pts.slice(-mx);if(!KINDS[edit.kind].light)edit.dim=false;if(edit.kind==='camera'&&edit.src==='iHost')edit.src='Imou';if(edit.kind==='camera'&&!CAMLIST&&CAMCFG.pass)setTimeout(loadCamList,0);else if(old==='camera'&&edit.kind!=='camera'&&edit.src==='Imou')edit.src='iHost';
     if(!edit.name.trim()||Object.values(KINDS).some(k=>k.label===edit.name))edit.name=KINDS[edit.kind].label;formErr='';renderSettings();return}
   if(t.dataset.edit){startEdit(t.dataset.edit);$('#picker').scrollIntoView({behavior:'smooth',block:'nearest'});return}
   if(t.dataset.scene){runScene(SCENES.find(s=>s.id===t.dataset.scene));return}
@@ -1214,12 +1216,51 @@ async function camPlay(a){const key=(a.cam||'').trim(),vw=$('#camView');if(!vw)r
     camHls.loadSource(url);camHls.attachMedia(v);v.play().catch(()=>{})}
   catch(e){if(req===camReq&&camId===a.id)camFail(e.message)}}
 document.addEventListener('visibilitychange',()=>{if(!camId)return;if(document.hidden){camStop();clearTimeout(camRetry)}else{camFails=0;const a=ACC[camId];if(a)camPlay(a)}});
+/* köprüden kamera listesi: birkaç olası adres denenir, biçim esnek okunur; olmazsa tekne panelinde bilinen kameralar */
+const CAMLKEY='aksongur-kamera-liste-v1';
+const CAM_KNOWN=[{key:'on',name:'Ön kamera'},{key:'arka',name:'Arka kamera'}];
+let CAMLIST=null,camListNote='',camListBusy=false;
+try{const j=JSON.parse(localStorage.getItem(CAMLKEY)||'null');if(j&&Array.isArray(j.list)){CAMLIST=j.list;camListNote=j.note||''}}catch(e){}
+function parseCamList(j){let arr=Array.isArray(j)?j:(j&&(j.cams||j.cameras||j.devices||j.list||j.data||j.result));
+  if(arr&&!Array.isArray(arr)&&typeof arr==='object')arr=Object.entries(arr).map(([k,v])=>typeof v==='object'?Object.assign({key:k},v):{key:k,name:String(v)});
+  if(!arr&&j&&typeof j==='object'&&!Array.isArray(j))arr=Object.entries(j).filter(([k,v])=>typeof v==='string'||(v&&typeof v==='object')).map(([k,v])=>typeof v==='object'?Object.assign({key:k},v):{key:k,name:v});
+  if(!Array.isArray(arr))return null;
+  const out=arr.map(it=>{if(typeof it==='string')return{key:it,name:it};if(!it||typeof it!=='object')return null;
+    const key=String(it.cam??it.key??it.id??it.slug??it.deviceId??it.name??'').trim();if(!key)return null;
+    return{key,name:String(it.name??it.deviceName??it.label??it.title??key),model:it.model||it.deviceModel||'',online:it.online??it.status}}).filter(Boolean);
+  return out.length?out:null}
+async function loadCamList(){if(camListBusy)return;
+  if(!CAMCFG.pass){CAMLIST=null;camListNote='Şifre girilmedi; liste köprüden alınamıyor.';renderCamFound();return}
+  camListBusy=true;camListNote='Kamera listesi alınıyor…';renderCamFound();
+  const base=CAMCFG.api.replace(/\/+$/,'');let note='',list=null;
+  for(const p of ['/cams','/list','/cameras','/devices']){
+    try{const r=await fetch(base+p,{headers:{'X-Key':CAMCFG.pass},cache:'no-store'});
+      if(r.status===401){note='Kamera şifresi yanlış.';break}
+      if(!r.ok)continue;const j=await r.json().catch(()=>null);list=parseCamList(j);if(list){note=list.length+' kamera köprüden alındı.';break}}
+    catch(e){note='Kamera köprüsüne ulaşılamadı.';break}}
+  if(!list){list=CAM_KNOWN.slice();note=(note?note+' ':'Köprü kamera listesi vermedi. ')+'Bilinen kameralar gösteriliyor.'}
+  CAMLIST=list;camListNote=note;camListBusy=false;try{localStorage.setItem(CAMLKEY,JSON.stringify({list,note}))}catch(e){}
+  renderCamFound();if(edit&&edit.kind==='camera'){readForm();renderSide()}}
+function camListNow(){return CAMLIST||CAM_KNOWN}
+function renderCamFound(){const el=$('#camFound');if(!el)return;const m=$('#camMsg');if(m)m.textContent=camListNote||(CAMCFG.pass?'Şifre bu cihazda kayıtlı':'Şifre yok: örnek görüntü gösteriliyor');
+  el.innerHTML=(CAMLIST||[]).map(c=>`<span>${esc(c.name)}<small>${esc(c.key)}</small></span>`).join('')}
+function camPickerHTML(){const list=camListNow(),cur=edit.cam||'';const inList=list.some(c=>c.key===cur);const manual=edit.camManual||(cur&&!inList);
+  const used=new Set(Object.values(ACC).filter(a=>a.kind==='camera'&&a.id!==edit.id&&a.cam).map(a=>a.cam));
+  return`<div class="cam-pick"><label class="f" for="fCamKey">Kamera (Imou)<select id="fCamKey"><option value="">Seçilmedi · örnek görüntü</option>
+    ${list.map(c=>`<option value="${esc(c.key)}" ${c.key===cur&&!manual?'selected':''}>${esc(c.name)}${c.model?' · '+esc(c.model):''}${used.has(c.key)?' (kullanılıyor)':''}</option>`).join('')}
+    <option value="__manual" ${manual?'selected':''}>Listede yok, adını yaz…</option></select></label>
+    <button type="button" class="btn small ghost" id="fCamRefresh">${camListBusy?'Alınıyor…':'Listeyi yenile'}</button></div>
+    ${manual?`<label class="f" for="fCamMan">Köprüdeki kamera adı<input type="text" id="fCamMan" value="${esc(cur)}" placeholder="ör. salon" autocapitalize="off" spellcheck="false"></label>`:''}
+    <p class="note">${esc(camListNote||'Liste Ayarlar → Kameralar (Imou) bölümündeki şifreyle köprüden alınır.')} Kamera seçilmezse 3B modelden örnek görüntü gösterilir.</p>`}
+document.addEventListener('change',e=>{if(e.target.id!=='fCamKey'||!edit)return;const k=e.target.value;readForm();
+  if(k&&k!=='__manual'){const c=camListNow().find(x=>x.key===k);if(c&&(!edit.name.trim()||edit.name==='Kamera'))edit.name=c.name}renderSide()});
+document.addEventListener('click',e=>{if(e.target.id==='fCamRefresh'){readForm();loadCamList()}else if(e.target.id==='camListBtn')loadCamList()});
 function applyCamCfg(){$('#camApi').value=CAMCFG.api;$('#camPass').value=CAMCFG.pass;$('#camQ').value=CAMCFG.q;
   $('#camMsg').textContent=CAMCFG.pass?'Şifre bu cihazda kayıtlı':'Şifre yok: örnek görüntü gösteriliyor'}
 $('#camForm').addEventListener('submit',e=>{e.preventDefault();
   CAMCFG={api:$('#camApi').value.trim()||'https://imou-kamera.aksongur.workers.dev',pass:$('#camPass').value.trim(),q:$('#camQ').value};
-  try{localStorage.setItem(CAMKEY,JSON.stringify(CAMCFG))}catch(x){}applyCamCfg();toast('Kameralar kaydedildi');camFails=0;if(camId)renderCam();renderRooms()});
-applyCamCfg();
+  try{localStorage.setItem(CAMKEY,JSON.stringify(CAMCFG))}catch(x){}applyCamCfg();toast('Kameralar kaydedildi');loadCamList();camFails=0;if(camId)renderCam();renderRooms()});
+applyCamCfg();renderCamFound();
 const fmtOsd=()=>new Date().toLocaleString('tr-TR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});
 function renderCam(){const a=ACC[camId];if(!a)return closeCam();
   const cams=camsHere(),n=Math.max(1,cams.findIndex(c=>c.id===a.id)+1);
