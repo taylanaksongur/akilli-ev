@@ -318,9 +318,10 @@ input[type=text],input[type=number],select{width:100%;background:var(--panel-2);
       </div>
       <div class="card conn">
         <h3>SONOFF iHost bağlantısı</h3>
-        <label class="f" for="ihostIp">iHost adresi<input type="text" id="ihostIp" placeholder="ör. 192.168.1.50 veya ihost.local"></label>
-        <div class="row"><button class="btn" id="ihostBtn">Bağlantıyı dene</button><span class="note" id="ihostMsg">Bağlı değil</span></div>
-        <p class="note">Gerçek kontrol için yerel ağda küçük bir köprü servisi kuracağız. Aksesuarın “Cihaz kimliği” alanı o zaman dolacak.</p>
+        <label class="f" for="ihostIp">Köprü adresi<input type="url" id="ihostIp" inputmode="url" autocapitalize="off" placeholder="ör. https://ihost.alanadin.com"></label>
+        <div class="row"><button class="btn" id="ihostBtn">Bağlantıyı dene</button><button class="btn ghost" id="ihostPair">Eşleştir</button><span class="note" id="ihostMsg">Bağlı değil</span></div>
+        <p class="note">Eşleştirmek için iHost'un üstündeki düğmeye bas, 5 dakika içinde “Eşleştir”e dokun. Sonra aksesuarı düzenlerken “Cihaz kimliği” listeden seçilir.</p>
+        <datalist id="ihostList"></datalist>
       </div>
       <div class="card conn">
         <h3>Meross bağlantısı</h3>
@@ -341,7 +342,7 @@ input[type=text],input[type=number],select{width:100%;background:var(--panel-2);
 
 <script src="/Aksi/hesap.js"></script>
 <script src="/Aksi/esitle.js"></script>
-<script>window.aksiEsitle&&aksiEsitle({alan:"ev",anahtarlar:{"aksongur-aksesuarlar":{},"aksongur-kamera-v3":{gizli:["pass"]}}})</script>
+<script>window.aksiEsitle&&aksiEsitle({alan:"ev",anahtarlar:{"aksongur-aksesuarlar":{},"aksongur-ihost":{},"aksongur-kamera-v3":{gizli:["pass"]}}})</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 (function(){
@@ -1071,7 +1072,7 @@ function renderSide(){
         <label class="f" for="fRoom">Oda<select id="fRoom">${Object.keys(ROOMS).map(r=>`<option value="${r}" ${edit.room===r?'selected':''}>${ROOMS[r].name}</option>`).join('')}</select></label>
         <label class="f" for="fSrc">Kaynak<select id="fSrc">${SRC.map(s=>`<option ${edit.src===s?'selected':''}>${s}</option>`).join('')}</select></label>
       </div>
-      <label class="f" for="fExt">Cihaz kimliği<input type="text" id="fExt" value="${esc(edit.extId)}" placeholder="${edit.kind==='camera'?'Imou seri numarası (ör. 7F0A1B2C3D4E5)':'iHost cihaz ID / Meross UUID (bağlantıdan sonra)'}"></label>
+      <label class="f" for="fExt">Cihaz kimliği<input type="text" id="fExt" ${edit.src==='iHost'?'list="ihostList"':''} value="${esc(edit.extId)}" placeholder="${edit.kind==='camera'?'Imou seri numarası (ör. 7F0A1B2C3D4E5)':'iHost cihaz ID / Meross UUID (bağlantıdan sonra)'}"></label>
       ${edit.kind==='camera'?camPickerHTML():''}
       ${k.light?`<label class="check" for="fDim"><input type="checkbox" id="fDim" ${edit.dim?'checked':''}>Parlaklık ayarlanabilir (dimmer)</label>`:''}
       ${edit.kind==='strip'?`<label class="check" for="fLoop"><input type="checkbox" id="fLoop" ${edit.loop?'checked':''}>Kapalı döngü (son nokta ilkine bağlansın)</label>`:''}
@@ -1108,7 +1109,7 @@ function renderSettings(){
 
 /* ---------- Olaylar ---------- */
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-view],[data-kind],[data-edit],[data-scene],#addBtn,#fSave,#fCancel,#fDel,#fDelYes,#fDelNo,#clearEx,#clearExYes,#ihostBtn,#merossBtn');if(!t)return;
+  const t=e.target.closest('[data-view],[data-kind],[data-edit],[data-scene],#addBtn,#fSave,#fCancel,#fDel,#fDelYes,#fDelNo,#clearEx,#clearExYes,#ihostBtn,#ihostPair,#merossBtn');if(!t)return;
   if(t.dataset.view){if(t.dataset.view==='ayarlar'&&$('#view-ayarlar').hidden){openLock();return}showView(t.dataset.view);return}
   if(t.dataset.kind){readForm();const old=edit.kind;edit.kind=t.dataset.kind;const n=KINDS[edit.kind].n;
     if(n!=='many'&&edit.pts.length>n)edit.pts=edit.pts.slice(-n);const mx=KINDS[edit.kind].max;if(mx&&edit.pts.length>mx)edit.pts=edit.pts.slice(-mx);if(!KINDS[edit.kind].light)edit.dim=false;if(edit.kind==='camera'&&edit.src==='iHost')edit.src='Imou';if(edit.kind==='camera'&&!CAMLIST&&CAMCFG.pass)setTimeout(loadCamList,0);else if(old==='camera'&&edit.kind!=='camera'&&edit.src==='Imou')edit.src='iHost';
@@ -1125,7 +1126,8 @@ document.addEventListener('click',e=>{
     case 'clearEx':{t.outerHTML='<span class="row" id="clearExWrap"><span class="note">Örnekler silinsin mi?</span><button class="btn small danger" id="clearExYes">Evet</button></span>';break}
     case 'clearExYes':Object.values(ACC).filter(a=>a.example).forEach(a=>delAcc(a.id));toast('Örnek aksesuarlar silindi');
       $('#clearExWrap')?.replaceWith(Object.assign(document.createElement('button'),{className:'btn small ghost',id:'clearEx',textContent:'Örnekleri sil',hidden:true}));break;
-    case 'ihostBtn':$('#ihostMsg').textContent='Köprü servisi henüz kurulmadı; sonraki adımda bağlayacağız.';break;
+    case 'ihostBtn':ihostKaydet();ihostListe(true);break;
+    case 'ihostPair':ihostKaydet();ihostEslestir();break;
     case 'merossBtn':$('#merossMsg').textContent='Köprü servisi henüz kurulmadı; sonraki adımda bağlayacağız.';break;
   }
 });
@@ -1363,6 +1365,41 @@ const _rs=renderSettings;renderSettings=function(){_rs();renderThermo();renderRo
 
 init3D();renderSettings();setFloor(FLOOR);initStore().then(watchPin);initWeather();
 })();
+
+/* ---------- iHost köprüsü (ihost-koprusu/kopru.js) ---------- */
+const IHKEY='aksongur-ihost';let IHOST={url:''};try{Object.assign(IHOST,JSON.parse(localStorage.getItem(IHKEY)||'{}'))}catch(e){}
+let IHLIST=null;
+$('#ihostIp').value=IHOST.url;
+function ihostKaydet(){const u=$('#ihostIp').value.trim().replace(/\/+$/,'');if(u===IHOST.url)return;IHOST.url=u;try{localStorage.setItem(IHKEY,JSON.stringify(IHOST))}catch(e){}}
+async function ihostIstek(yol,govde){
+  if(!IHOST.url)throw new Error('Önce köprü adresini yaz');
+  let tk=null;try{tk=localStorage.getItem('aksi-oturum')}catch(e){}   /* Aksi oturum belirteci (hesap.js) */
+  if(!tk)throw new Error('Önce Aksi’de giriş yap');
+  const h={'Content-Type':'application/json',Authorization:'Bearer '+tk};
+  let r;try{r=await fetch(IHOST.url+yol,{method:govde?'POST':'GET',headers:h,body:govde?JSON.stringify(govde):undefined,cache:'no-store'})}
+  catch(e){throw new Error('Köprüye ulaşılamadı')}
+  const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.hata||('Hata '+r.status));return j}
+async function ihostListe(goster){const m=$('#ihostMsg');if(goster)m.textContent='Bağlanıyor…';
+  try{const j=await ihostIstek('/cihazlar');IHLIST=j.cihazlar||[];
+    $('#ihostList').innerHTML=IHLIST.map(c=>`<option value="${esc(c.id)}">${esc(c.ad)}${c.cevrimici?'':' (çevrim dışı)'}</option>`).join('');
+    m.textContent=`Bağlı · ${IHLIST.length} cihaz`;ihostDurumAl()}
+  catch(e){if(goster)m.textContent=e.message}}
+async function ihostEslestir(){const m=$('#ihostMsg');m.textContent='Eşleştiriliyor…';
+  try{await ihostIstek('/eslestir',{});m.textContent='Eşleşti';ihostListe(true)}catch(e){m.textContent=e.message}}
+/* iHost'taki gerçek durumu panele yansıt (yalnız değişenler, sunucuya geri yazmadan) */
+function ihostDurumAl(){if(!IHLIST)return;let n=0;
+  accList().forEach(a=>{if(a.src!=='iHost'||!a.extId)return;const c=IHLIST.find(x=>x.id===a.extId);if(!c||c.acik==null)return;
+    if(!!a.on!==c.acik){a.on=c.acik;n++}if(a.dim&&c.parlaklik!=null&&a.bri!==c.parlaklik){a.bri=c.parlaklik;n++}});
+  if(n){afterChange(false)}}
+/* Paneldeki her açma/kapama ve parlaklık değişikliği iHost'a gider */
+const _patchAcc=patchAcc;
+patchAcc=function(id,patch){const a=ACC[id];const r=_patchAcc(id,patch);
+  if(a&&a.src==='iHost'&&a.extId&&IHOST.url&&('on' in patch||'bri' in patch)){
+    const g={};if('on' in patch)g.acik=!!patch.on;if('bri' in patch&&Number.isFinite(patch.bri))g.parlaklik=patch.bri;
+    ihostIstek('/cihaz/'+encodeURIComponent(a.extId),g).catch(e=>toast(a.name+': '+e.message))}
+  return r};
+if(IHOST.url){ihostListe(false);setInterval(()=>{if(!document.hidden)ihostListe(false)},15000);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)ihostListe(false)})}
 </script>
 
 </body></html>
