@@ -61,6 +61,10 @@ nav.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--
 .card-head h3{margin:0;flex:1}
 
 /* Kontrol */
+.room-views{display:flex;gap:2px;background:var(--panel-2);padding:3px;border-radius:10px;margin:0 auto 8px;max-width:100%;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;width:fit-content}
+.room-views::-webkit-scrollbar{display:none}
+.room-views button{flex:0 0 auto;font-family:var(--f-display);font-size:12px;font-weight:600;color:var(--muted);padding:7px 12px;border-radius:8px;white-space:nowrap;min-height:34px}
+.room-views button[aria-pressed="true"]{background:var(--accent);color:#fff}
 .stage-wrap{max-width:1200px;width:100%;margin:0 auto;padding-top:2vh;position:relative}
 .stage{position:relative;width:100%;height:min(76vh,820px);min-height:340px;border-radius:22px;overflow:hidden;background:transparent}
 .stage-ctrl{position:absolute;left:12px;bottom:12px;display:flex;gap:8px;z-index:3;flex-wrap:wrap}
@@ -256,6 +260,7 @@ input[type=text],input[type=number],select{width:100%;background:var(--panel-2);
   <!-- KONTROL -->
   <section class="view" id="view-kontrol">
     <div class="stage-wrap">
+      <div class="room-views" id="roomViews" role="group" aria-label="Odalar"></div>
       <div class="stage" id="stage"><div class="floor-empty" id="floorEmpty" hidden><strong id="feTitle">Kat 2</strong><p>Bu katın planı henüz eklenmedi. Kat planı görselini gönderdiğinde bu katı da 3B olarak kuracağım.</p></div><div class="thermo" id="thermo"></div><div class="stage-ctrl" id="stageCtrl">
         <button class="on" id="allOn" type="button" title="Bu kattaki bütün ışıkları aç"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z"/></svg>Tüm ışıkları aç</button>
         <button id="allOff" type="button"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3zM4 4l16 16"/></svg>Tüm ışıkları kapat</button>
@@ -849,6 +854,18 @@ function init3D(){
     const g=cv.getContext('2d'),W=cv.width,H=cv.height;g.fillStyle='#05060d';g.fillRect(0,0,W,H);g.drawImage(rc,0,rc.height-vh,vw,vh,0,0,W,H);
     renderer.setViewport(0,0,rc.width/pr,rc.height/pr);renderer.toneMappingExposure=ex;renderer.shadowMap.autoUpdate=true;T.CAMCONE.forEach(c=>c.visible=true);
     g.fillStyle='rgba(255,255,255,.035)';for(let y=0;y<H;y+=3)g.fillRect(0,y,W,1)};
+  /* Oda görünümü: oda poligonunun ortasına yumuşak yakınlaşma (k=null → genel görünüm) */
+  let fly=null;
+  T.goRoom=k=>{const R=k&&ROOMS[k];let to;
+    if(!R)to={x:HOME.x,z:HOME.z,th:0,ph:0.72,zm:1};
+    else{const pts=R.poly.trim().split(/\s+/).map(p=>p.split(',').map(Number));
+      const xs=pts.map(p=>X(p[0])),zs=pts.map(p=>Z(p[1]));const x0=Math.min(...xs),x1=Math.max(...xs),z0=Math.min(...zs),z1=Math.max(...zs);
+      const zm=Math.max(0.3,Math.min(1,Math.max((x1-x0)/(2*camHW),(z1-z0)/(2*camHD))*1.35));
+      to={x:(x0+x1)/2,z:(z0+z1)/2,th:theta,ph:0.82,zm}}
+    fly={t0:performance.now(),f:{x:target.x,z:target.z,th:theta,ph:phi,zm:zoom},to};needs=true};
+  T.flyStep=()=>{if(!fly)return false;const u=Math.min(1,(performance.now()-fly.t0)/650),e=u<.5?2*u*u:1-Math.pow(-2*u+2,2)/2,f=fly.f,t=fly.to;
+    target.x=f.x+(t.x-f.x)*e;target.z=f.z+(t.z-f.z)*e;theta=f.th+(t.th-f.th)*e;phi=f.ph+(t.ph-f.ph)*e;zoom=f.zm+(t.zm-f.zm)*e;
+    if(u>=1)fly=null;return true};
   T.setFloor=n=>{for(const k in FG)FG[k].visible=+k===n;const c=FLS[n].cam;HOME.set(X(c[0]),0.4,Z(c[1]));camHW=c[2];camHD=c[3];target.copy(HOME);theta=0;phi=0.72;zoom=1;fit();needs=true};
   const el=renderer.domElement;el.style.cssText='touch-action:none;display:block;width:100%;height:100%';
   const ptrs=new Map();let downAt=null,moved=0,pinch0=0,zoom0=1,mid=null,panMode=false,lastTap=0;
@@ -859,7 +876,7 @@ function init3D(){
     target.x=Math.max(X(VB[0]),Math.min(X(VB[0]+VB[2]-20),target.x));target.z=Math.max(Z(40),Math.min(Z(1190),target.z));needs=true}
   const midOf=()=>{const[a,b]=[...ptrs.values()];return{x:(a.x+b.x)/2,y:(a.y+b.y)/2,d:Math.hypot(a.x-b.x,a.y-b.y)||1}};
   el.addEventListener('contextmenu',e=>e.preventDefault());
-  el.addEventListener('pointerdown',e=>{el.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});downAt={x:e.clientX,y:e.clientY};moved=0;closePop();
+  el.addEventListener('pointerdown',e=>{fly=null;el.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});downAt={x:e.clientX,y:e.clientY};moved=0;closePop();
     panMode=e.button===2||e.button===1||e.shiftKey||e.ctrlKey||e.metaKey;
     if(ptrs.size===2){mid=midOf();pinch0=mid.d;zoom0=zoom}});
   el.addEventListener('pointermove',e=>{const p=ptrs.get(e.pointerId);if(!p){el.style.cursor=hitAt(e)?'pointer':'grab';return}
@@ -867,7 +884,7 @@ function init3D(){
     if(ptrs.size===1){if(panMode)pan(dx,dy);else{theta=Math.max(-1.2,Math.min(1.2,theta-dx*0.006));phi=Math.max(0.2,Math.min(1.15,phi-dy*0.005));needs=true}}
     else if(ptrs.size===2){const m=midOf();if(mid)pan(m.x-mid.x,m.y-mid.y);mid=m;zoom=Math.max(0.3,Math.min(1.5,zoom0*pinch0/m.d));needs=true}});
   el.addEventListener('pointerup',e=>{ptrs.delete(e.pointerId);if(ptrs.size<2)mid=null;
-    if(ptrs.size===0&&downAt&&moved<8){const now=performance.now();if(now-lastTap<320&&!hitAt(e)){target.copy(HOME);theta=0;phi=0.72;zoom=1;needs=true;lastTap=0}else{lastTap=now;tap(e)}}
+    if(ptrs.size===0&&downAt&&moved<8){const now=performance.now();if(now-lastTap<320&&!hitAt(e)){T.goRoom(null);roomView(null);lastTap=0}else{lastTap=now;tap(e)}}
     if(ptrs.size===0)downAt=null});
   el.addEventListener('pointercancel',e=>{ptrs.delete(e.pointerId);downAt=null});
   el.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(0.3,Math.min(1.5,zoom*(1+e.deltaY*0.001)));needs=true},{passive:false});
@@ -880,7 +897,7 @@ function init3D(){
     if(a.kind==='climate'){openPop(a,e);return}
     const now=!a.on;patchAcc(id,{on:now});
     toast(a.kind==='cover'?`${a.name} ${now?'açılıyor':'kapanıyor'}`:`${a.name} ${now?'açıldı':'kapatıldı'}`)}
-  (function loop(){requestAnimationFrame(loop);let anim=false;
+  (function loop(){requestAnimationFrame(loop);let anim=false;if(T.flyStep())anim=true;
     T.PL.forEach(l=>{const t=l.userData.target;if(Math.abs(l.intensity-t)>0.005){l.intensity+=(t-l.intensity)*0.15;anim=true}else l.intensity=t});
     T.HALO.forEach(h=>{const t=h.userData.target,o=h.material.opacity;if(Math.abs(o-t)>0.005){h.material.opacity+=(t-o)*0.15;anim=true}else h.material.opacity=t});
     T.COVERS.forEach(c=>{const t=c.userData.target,v=c.userData.v;if(Math.abs(v-t)>0.003){c.userData.v+=(t-v)*0.12;layoutCover(c);anim=true}});
@@ -1141,11 +1158,19 @@ function setAllLights(on){let n=0;accList().forEach(a=>{if(KINDS[a.kind]?.light&
 $('#allOn').addEventListener('click',()=>setAllLights(true));
 $('#allOff').addEventListener('click',()=>setAllLights(false));
 /* ---------- Katlar ---------- */
+/* Oda düğmeleri (teknedeki görünüm düğmeleri gibi) */
+let curRoom=null;
+function roomView(k){curRoom=k&&ROOMS[k]?k:null;document.querySelectorAll('#roomViews button').forEach(b=>b.setAttribute('aria-pressed',(b.dataset.rv||null)===curRoom))}
+function renderRoomViews(){const el=$('#roomViews');if(!el)return;const ks=Object.keys(ROOMS||{});
+  el.hidden=!ks.length;el.innerHTML=`<button type="button" data-rv="" aria-pressed="true">Genel</button>`+ks.map(k=>`<button type="button" data-rv="${esc(k)}" aria-pressed="false">${esc(ROOMS[k].name)}</button>`).join('');curRoom=null}
+$('#roomViews').addEventListener('click',e=>{const b=e.target.closest('[data-rv]');if(!b)return;const k=b.dataset.rv||null;
+  roomView(k);if(T&&T.goRoom)T.goRoom(curRoom);b.scrollIntoView({block:'nearest',inline:'center',behavior:'smooth'})});
 function setFloor(n){if(!FLS[n])n=1;FLOOR=n;try{localStorage.setItem('aksongur-kat',n)}catch(e){}
   const F=FLS[n];ROOMS=F.ROOMS;LABELS=F.LABELS;WALLS=F.WALLS;GLASS2D=F.GLASS2D;VB=F.vb;
   document.querySelectorAll('[data-floor]').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.floor===n));
   edit=null;selId=null;confirmDel=false;formErr='';openRoom=null;closePop();closeCam();
   if(T&&T.setFloor)T.setFloor(n);
+  renderRoomViews();
   lastSig=sig();rebuildAcc();update3D();renderSettings()}
 document.querySelectorAll('[data-floor]').forEach(b=>b.addEventListener('click',()=>setFloor(+b.dataset.floor)));
 
@@ -1332,7 +1357,7 @@ function renderRooms(){const el=$('#roomsOv');if(!el)return;const list=Object.va
       <small class="${lit?'lit':''}">${lights.length?lit+'/'+lights.length:items.length?items.length+' cihaz':''}</small>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 9l6 6 6-6"/></svg></button>
       ${open?`<div class="rm-units">${items.length?items.map(unitBtn).join(''):'<div class="rm-empty">Bu odada cihaz yok. Ayarlar’dan ekleyebilirsin.</div>'}</div>`:''}</div>`}).join('')}
-$('#roomsOv').addEventListener('click',e=>{const h=e.target.closest('[data-room]');if(h){openRoom=openRoom===h.dataset.room?null:h.dataset.room;renderRooms();return}
+$('#roomsOv').addEventListener('click',e=>{const h=e.target.closest('[data-room]');if(h){openRoom=openRoom===h.dataset.room?null:h.dataset.room;renderRooms();roomView(openRoom);if(T&&T.goRoom)T.goRoom(curRoom);return}
   const cb=e.target.closest('[data-cam]');if(cb){camId===cb.dataset.cam?closeCam():openCam(cb.dataset.cam);return}
   const u=e.target.closest('[data-unit]');if(!u)return;const a=ACC[u.dataset.unit];if(!a)return;const now=!a.on;patchAcc(a.id,{on:now});
   toast(a.kind==='cover'?`${a.name} ${now?'açılıyor':'kapanıyor'}`:`${a.name} ${now?'açıldı':'kapatıldı'}`)});
