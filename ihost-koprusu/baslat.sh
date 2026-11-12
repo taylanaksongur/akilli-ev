@@ -9,7 +9,7 @@ case "$(uname -m)" in
   *) MIM=arm ;;
 esac
 echo "Mimari: $(uname -m) -> cloudflared-linux-$MIM"
-wget -qO /k.js "$DEPO/kopru.js" || { echo "kopru.js indirilemedi"; exit 1; }
+wget -qO /k.js "$DEPO/kopru.js?t=$(date +%s)" || { echo "kopru.js indirilemedi"; exit 1; }
 [ -x /cf ] || { wget -qO /cf "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-$MIM" && chmod +x /cf; } || { echo "cloudflared indirilemedi"; exit 1; }
 
 PORT=${PORT:-8787}
