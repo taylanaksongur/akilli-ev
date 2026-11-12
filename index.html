@@ -100,6 +100,36 @@ nav.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--
 .ubtn.on svg,.ubtn.on small{color:#5a3a0c}
 .ubtn.info{cursor:default}
 .rm-empty{grid-column:1/-1;font-size:11.5px;color:var(--muted);padding:2px 2px 4px}
+.ubtn.cam-u{border-color:rgba(255,107,129,.35)}.ubtn.cam-u svg{color:var(--danger)}
+/* Kamera penceresi: 3B sahnenin sağ üstü */
+.cam{position:absolute;top:calc(2vh + 12px);right:12px;z-index:6;width:min(440px,calc(100% - 24px));border-radius:16px;overflow:hidden;
+  background:rgba(14,18,44,.94);border:1px solid var(--line);box-shadow:0 18px 40px -16px #000;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.cam-head{display:flex;align-items:center;gap:9px;padding:9px 10px 9px 12px}
+.cam-head .live{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
+.cam-head .live.on{background:var(--danger);box-shadow:0 0 0 3px rgba(255,107,129,.2);animation:blink 1.6s infinite}
+@keyframes blink{50%{opacity:.35}}
+.cam-head strong{font-family:var(--f-display);font-size:13px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cam-head small{color:var(--muted);font-size:11px;white-space:nowrap;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.cam-head button{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;color:var(--muted);flex:none}
+.cam-head button:hover{background:var(--panel-2);color:var(--fg)}
+.cam-view{position:relative;aspect-ratio:16/9;max-width:100%;background:#05060d;cursor:zoom-in;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+.cam-view video,.cam-view img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;max-width:100%;pointer-events:none}
+.cam-osd{position:absolute;left:10px;top:8px;font-family:var(--f-mono);font-size:11px;color:#fff;text-shadow:0 1px 2px #000;pointer-events:none;letter-spacing:.02em}
+.cam-osd.r{left:auto;right:10px}
+.cam-msg{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:8px;padding:18px;text-align:center;color:var(--muted);font-size:12.5px;line-height:1.5;
+  background:repeating-linear-gradient(0deg,rgba(255,255,255,.025) 0 2px,transparent 2px 4px),radial-gradient(circle at 50% 40%,#1a2050,#05060d 75%)}
+.cam-msg b{color:var(--fg);font-family:var(--f-display);font-size:14px;font-weight:600}
+.cam-msg svg{color:var(--danger)}
+.cam-foot{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:8px 10px;border-top:1px solid var(--line)}
+.cam-foot .hint2{font-size:11px;color:var(--muted);margin-right:auto}
+.cam-foot button{font-size:11.5px;padding:5px 10px;border-radius:999px;background:var(--panel-2);color:var(--muted)}
+.cam-foot button[aria-pressed="true"]{background:rgba(255,107,129,.18);color:#ffb3bf}
+.cam-view:fullscreen{aspect-ratio:auto;width:100%;height:100%;cursor:zoom-out}
+.cam-view:-webkit-full-screen{aspect-ratio:auto;width:100%;height:100%;cursor:zoom-out}
+.cam.max{position:fixed;inset:0;width:auto;border-radius:0;z-index:40;display:flex;flex-direction:column;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+.cam.max .cam-view{flex:1;aspect-ratio:auto;cursor:zoom-out}
+@media (max-width:680px){.cam{top:12px;right:12px}}
 @media (max-width:680px){.rooms-ov{position:static;width:auto;max-height:none;margin-top:10px}}
 .lock{position:fixed;inset:0;z-index:30;display:grid;place-items:center;padding:16px;background:rgba(8,11,30,.72);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
 .lock-box{width:min(320px,100%);background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:20px;display:grid;gap:12px;text-align:center}
@@ -158,7 +188,7 @@ input[type=text],input[type=number],select{width:100%;background:var(--panel-2);
 
 .form{display:grid;gap:10px}
 .form .two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.kinds{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.kinds{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
 .kinds button{padding:8px 4px;border-radius:10px;background:var(--panel-2);font-size:11px;color:var(--muted);display:grid;justify-items:center;gap:4px;border:1px solid transparent}
 .kinds button[aria-pressed="true"]{border-color:var(--accent);color:var(--fg);background:rgba(74,99,255,.16)}
 .check{display:flex;gap:8px;align-items:center;font-size:13px}
@@ -181,7 +211,7 @@ input[type=text],input[type=number],select{width:100%;background:var(--panel-2);
   .hdr-right .chip{display:none}
   nav.tabs button{padding:8px 10px;letter-spacing:.04em}
   header.top{gap:10px}
-  .kinds{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .kinds{grid-template-columns:repeat(5,minmax(0,1fr))}
   .form .two{grid-template-columns:minmax(0,1fr)}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -206,7 +236,7 @@ input[type=text],input[type=number],select{width:100%;background:var(--panel-2);
         <button role="tab" id="tab-kontrol" aria-selected="true" data-view="kontrol">Kontrol</button>
         <button role="tab" id="tab-ayarlar" aria-selected="false" data-view="ayarlar">Ayarlar</button>
       </nav>
-      <span class="chip demo" title="Cihazlar henüz bağlanmadı; değişiklikler sadece bu panelde">● Demo · v1.1</span>
+      <span class="chip demo" title="Cihazlar henüz bağlanmadı; değişiklikler sadece bu panelde">● Demo · v1.2</span>
     </div>
   </header>
 
@@ -218,8 +248,9 @@ input[type=text],input[type=number],select{width:100%;background:var(--panel-2);
         <button id="allOff" type="button"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3zM4 4l16 16"/></svg>Tüm ışıkları kapat</button>
       </div></div>
       <div class="rooms-ov" id="roomsOv" aria-label="Odalar"></div>
+      <div class="cam" id="camWin" hidden role="dialog" aria-label="Kamera görüntüsü"></div>
       <div class="stage-msg" id="stageMsg"></div>
-      <div class="hint">Tek parmak: döndür · İki parmak: kaydır ve yakınlaş · Farede sağ tık veya Shift ile sürükle: kaydır · Boş yere çift dokun: görünümü sıfırla · Aksesuara dokun: aç / kapat · <span id="ver">Sürüm 1.1</span></div>
+      <div class="hint">Tek parmak: döndür · İki parmak: kaydır ve yakınlaş · Farede sağ tık veya Shift ile sürükle: kaydır · Boş yere çift dokun: görünümü sıfırla · Aksesuara dokun: aç / kapat · Kameraya dokun: görüntüyü aç · <span id="ver">Sürüm 1.2</span></div>
     </div>
   </section>
 
@@ -366,7 +397,8 @@ const KINDS={
   plug:{label:'Priz',n:1,c:'#36d39a',ico:'M9 3v5M15 3v5M6 8h12v4a6 6 0 0 1-12 0zM12 18v3'},
   sensor:{label:'Sensör',n:1,c:'#4fc3ff',ico:'M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0M6 6a8 8 0 0 0 0 12M18 6a8 8 0 0 1 0 12'},
   cover:{label:'Perde',n:2,c:'#b07cff',ico:'M3 4h18M6 4v16M18 4v16M6 20c2-4 2-12 0-16M18 20c-2-4-2-12 0-16'},
-  climate:{label:'Termostat',n:1,c:'#ff8a5b',ico:'M10 4a2 2 0 0 1 4 0v10a4 4 0 1 1-4 0zM12 9v7'}
+  climate:{label:'Termostat',n:1,c:'#ff8a5b',ico:'M10 4a2 2 0 0 1 4 0v10a4 4 0 1 1-4 0zM12 9v7'},
+  camera:{label:'Kamera',n:1,c:'#ff6b81',ico:'M3 7h11v10H3zM14 10.5l7-3.5v10l-7-3.5z'}
 };
 const SRC=['iHost','Meross','Homebridge','Diğer'];
 const srcCls=s=>s==='iHost'?'ihost':s==='Meross'?'meross':s==='Homebridge'?'hb':'ex';
@@ -759,7 +791,7 @@ function init3D(){
   const moon=new THREE.DirectionalLight('#8fa2ff',0.28);moon.position.set(-2,13,9);moon.target.position.set(3,0,0);scene.add(moon.target);moon.castShadow=true;
   moon.shadow.mapSize.set(2048,2048);Object.assign(moon.shadow.camera,{left:-12,right:12,top:12,bottom:-12,near:1,far:45});moon.shadow.bias=-0.0008;scene.add(moon);
 
-  T={scene,camera,renderer,add,box,mat,M,haloTex,lineTex,group:null,PL:[],HALO:[],EMIS:[],HIT:[],COVERS:[],CLIM:[],PLUGLED:[]};
+  T={scene,camera,renderer,add,box,mat,M,haloTex,lineTex,group:null,PL:[],HALO:[],EMIS:[],HIT:[],COVERS:[],CLIM:[],PLUGLED:[],CAMCONE:[]};
 
   /* kamera */
   const HOME=new THREE.Vector3(X(1314),0.4,0.25),target=HOME.clone();let camHW=9.2,camHD=4.6;
@@ -795,6 +827,7 @@ function init3D(){
   function hitAt(e){const r=el.getBoundingClientRect();v2.set(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);ray.setFromCamera(v2,camera);
     const h=ray.intersectObjects(T.HIT,false);return h.length?h[0].object.userData.id:null}
   function tap(e){const id=hitAt(e);if(!id||!ACC[id])return;const a=ACC[id];
+    if(a.kind==='camera'){openCam(id);return}
     if(a.kind==='sensor'){toast(`${a.name}: henüz veri yok`);return}
     if(a.kind==='climate'){openPop(a,e);return}
     const now=!a.on;patchAcc(id,{on:now});
@@ -811,7 +844,7 @@ function layoutCover(c){const{len,v,panels}=c.userData;const w=Math.max(0.12,len
 function rebuildAcc(){
   if(!T)return;const{scene,add,mat,M,haloTex,lineTex}=T;
   if(T.group){scene.remove(T.group);T.group.traverse(o=>{if(o.geometry)o.geometry.dispose()})}
-  const g=new THREE.Group();T.group=g;scene.add(g);T.PL=[];T.HALO=[];T.EMIS=[];T.HIT=[];T.COVERS=[];T.CLIM=[];T.PLUGLED=[];
+  const g=new THREE.Group();T.group=g;scene.add(g);T.PL=[];T.HALO=[];T.EMIS=[];T.HIT=[];T.COVERS=[];T.CLIM=[];T.PLUGLED=[];T.CAMCONE=[];
   const A=(geo,m,x,y,z)=>add(geo,m,x,y,z,0,g);
   const pl=(id,x,y,z,max,dist)=>{const l=new THREE.PointLight('#ffb35a',0,(dist||4.2)*1.1,2);l.position.set(x,y,z);l.userData={id,max:max*1.35,target:0};g.add(l);T.PL.push(l)};
   const halo=(id,x,y,z,s)=>{const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:haloTex,blending:THREE.AdditiveBlending,depthWrite:false,transparent:true,opacity:0}));
@@ -857,6 +890,17 @@ function rebuildAcc(){
       A(new THREE.SphereGeometry(0.018,8,6),new THREE.MeshBasicMaterial({color:'#4fc3ff'}),x,2.11,z);hit(a.id,x,2.1,z,new THREE.SphereGeometry(0.25,8,6))}
     else if(a.kind==='climate'){const[x,z]=P[0];A(new THREE.BoxGeometry(0.16,0.16,0.16),mat.white,x,1.5,z);
       const scr=A(new THREE.BoxGeometry(0.17,0.08,0.17),new THREE.MeshBasicMaterial({color:'#36d39a'}),x,1.52,z);scr.userData.id=a.id;T.CLIM.push(scr);hit(a.id,x,1.5,z)}
+    else if(a.kind==='camera'){const[x,z]=P[0];const L=LABELS[a.room];const ang=L?Math.atan2(Z(L[1])-z,X(L[0])-x):0;
+      const c=new THREE.Group();c.position.set(x,0,z);c.rotation.y=-ang;g.add(c);
+      const pc=(geo,m,px,py,pz,rz)=>{const o=new THREE.Mesh(geo,m);o.position.set(px,py,pz);if(rz)o.rotation.z=rz;o.castShadow=true;c.add(o);return o};
+      pc(new THREE.CylinderGeometry(0.06,0.06,0.03,18),mat.white,0,2.085,0);pc(new THREE.CylinderGeometry(0.012,0.012,0.08,8),mat.white,0,2.03,0);
+      pc(new THREE.SphereGeometry(0.075,20,14),mat.white,0.01,1.97,0);
+      pc(new THREE.CylinderGeometry(0.034,0.034,0.03,18),mat.dark,0.07,1.965,0,Math.PI/2+0.45);
+      pc(new THREE.SphereGeometry(0.011,8,6),new THREE.MeshBasicMaterial({color:'#4fc3ff'}),0.072,1.925,0.035);
+      const piv=new THREE.Group();piv.position.set(0.08,1.96,0);piv.rotation.z=-0.45;c.add(piv);
+      const cone=new THREE.Mesh(new THREE.ConeGeometry(1.1,2.6,28,1,true),new THREE.MeshBasicMaterial({color:'#ff6b81',transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
+      cone.rotation.z=Math.PI/2;cone.position.x=1.3;cone.userData={id:a.id};piv.add(cone);T.CAMCONE.push(cone);
+      hit(a.id,x,1.97,z,new THREE.SphereGeometry(0.3,8,6))}
     else if(a.kind==='cover'){const[[x1,z1],[x2,z2]]=P;const len=Math.hypot(x2-x1,z2-z1),ang=Math.atan2(z2-z1,x2-x1);
       const c=new THREE.Group();c.position.set((x1+x2)/2,0,(z1+z2)/2);c.rotation.y=-ang;g.add(c);
       const panels=[0,1].map(()=>{const p=new THREE.Mesh(new THREE.BoxGeometry(Math.max(len,0.1)/2,1.95,0.06),mat.curtain);p.position.y=1.02;p.castShadow=p.receiveShadow=true;c.add(p);return p});
@@ -874,6 +918,7 @@ function update3D(){
   T.PLUGLED.forEach(o=>{const a=ACC[o.userData.id];o.material.color.set(a&&a.on?'#36d39a':'#2b3159')});
   T.CLIM.forEach(o=>{const a=ACC[o.userData.id];o.material.color.set(a&&(a.setT??22)>22.4?'#ff8a5b':'#36d39a')});
   T.COVERS.forEach(c=>{const a=ACC[c.userData.id];c.userData.target=a&&a.on?0.14:1});
+  T.CAMCONE.forEach(c=>{c.material.opacity=camId===c.userData.id?0.13:0});
   needs=true;
 }
 
@@ -955,7 +1000,8 @@ function submitEdit(){
   const isNew=!edit.id;const id=edit.id||(slug(edit.name)+'-'+Date.now().toString(36).slice(-4));
   const prev=ACC[id]||{};
   const a={id,name:edit.name.trim(),kind:edit.kind,room:edit.room,src:edit.src,extId:(edit.extId||'').trim(),dim:!!edit.dim&&!!KINDS[edit.kind].light,
-    pts:edit.pts,on:prev.on??(edit.kind!=='sensor'&&edit.kind!=='climate'),bri:prev.bri??100};
+    pts:edit.pts,on:prev.on??(edit.kind!=='sensor'&&edit.kind!=='climate'&&edit.kind!=='camera'),bri:prev.bri??100};
+  if(edit.kind==='camera')a.stream=(edit.stream||'').trim();
   if(edit.kind==='strip'){a.h=Math.max(0.05,Math.min(2.1,+edit.h||0.5));a.loop=!!edit.loop&&edit.pts.length>2}
   if(edit.kind==='climate')a.setT=prev.setT??22;
   const fl=prev.floor||FLOOR;if(fl!==1)a.floor=fl;
@@ -964,7 +1010,7 @@ function submitEdit(){
 }
 function readForm(){if(!edit)return;const v=id=>document.getElementById(id);
   if(v('fName'))edit.name=v('fName').value;if(v('fRoom'))edit.room=v('fRoom').value;if(v('fSrc'))edit.src=v('fSrc').value;
-  if(v('fExt'))edit.extId=v('fExt').value;if(v('fDim'))edit.dim=v('fDim').checked;if(v('fH'))edit.h=v('fH').value;if(v('fLoop'))edit.loop=v('fLoop').checked}
+  if(v('fExt'))edit.extId=v('fExt').value;if(v('fStream'))edit.stream=v('fStream').value;if(v('fDim'))edit.dim=v('fDim').checked;if(v('fH'))edit.h=v('fH').value;if(v('fLoop'))edit.loop=v('fLoop').checked}
 function updateFormStatus(){const s=$('#fPts');if(s&&edit)s.textContent=edit.pts.length?`${edit.pts.length} nokta seçildi`:`Plana dokun: ${needPts(edit.kind)}`}
 
 function renderSide(){
@@ -977,7 +1023,9 @@ function renderSide(){
         <label class="f" for="fRoom">Oda<select id="fRoom">${Object.keys(ROOMS).map(r=>`<option value="${r}" ${edit.room===r?'selected':''}>${ROOMS[r].name}</option>`).join('')}</select></label>
         <label class="f" for="fSrc">Kaynak<select id="fSrc">${SRC.map(s=>`<option ${edit.src===s?'selected':''}>${s}</option>`).join('')}</select></label>
       </div>
-      <label class="f" for="fExt">Cihaz kimliği<input type="text" id="fExt" value="${esc(edit.extId)}" placeholder="iHost cihaz ID / Meross UUID (bağlantıdan sonra)"></label>
+      <label class="f" for="fExt">Cihaz kimliği<input type="text" id="fExt" value="${esc(edit.extId)}" placeholder="${edit.kind==='camera'?'Imou seri numarası (ör. 7F0A1B2C3D4E5)':'iHost cihaz ID / Meross UUID (bağlantıdan sonra)'}"></label>
+      ${edit.kind==='camera'?`<label class="f" for="fStream">Görüntü adresi (HLS, MP4 veya MJPEG)<input type="text" id="fStream" value="${esc(edit.stream||'')}" placeholder="ör. http://192.168.1.20:1984/api/stream.m3u8?src=salon" inputmode="url" autocapitalize="off" spellcheck="false"></label>
+      <p class="note">Imou kamera RTSP yayını verir, tarayıcı bunu doğrudan oynatamaz. Ev ağındaki köprü (go2rtc) yayını HLS veya MJPEG'e çevirir; o adresi buraya yaz. Boş bırakırsan kamera planda durur, görüntü penceresi "adres yok" der.</p>`:''}
       ${k.light?`<label class="check" for="fDim"><input type="checkbox" id="fDim" ${edit.dim?'checked':''}>Parlaklık ayarlanabilir (dimmer)</label>`:''}
       ${edit.kind==='strip'?`<label class="check" for="fLoop"><input type="checkbox" id="fLoop" ${edit.loop?'checked':''}>Kapalı döngü (son nokta ilkine bağlansın)</label>`:''}
       ${edit.kind==='strip'?`<label class="f" for="fH">Yükseklik (m)<input type="number" id="fH" min="0.05" max="2.1" step="0.05" value="${edit.h}"></label>`:''}
@@ -1035,7 +1083,7 @@ document.addEventListener('click',e=>{
   }
 });
 document.addEventListener('change',e=>{if(e.target.id==='fRoom'&&edit){edit.roomAuto=false;edit.room=e.target.value}});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closePop();if(edit)cancelEdit()}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closePop();if(camWin.classList.contains('max'))setMax(false);else if(camId&&!document.fullscreenElement)closeCam();if(edit)cancelEdit()}});
 
 function setAllLights(on){let n=0;accList().forEach(a=>{if(KINDS[a.kind]?.light&&!!a.on!==on){n++;patchAcc(a.id,{on})}});
   toast(n?(on?`Kat ${FLOOR}: ${n} ışık açıldı`:`Kat ${FLOOR}: ${n} ışık kapatıldı`):(on?`Kat ${FLOOR} ışıkları zaten açık`:`Kat ${FLOOR} ışıkları zaten kapalı`))}
@@ -1045,7 +1093,7 @@ $('#allOff').addEventListener('click',()=>setAllLights(false));
 function setFloor(n){if(!FLS[n])n=1;FLOOR=n;try{localStorage.setItem('aksongur-kat',n)}catch(e){}
   const F=FLS[n];ROOMS=F.ROOMS;LABELS=F.LABELS;WALLS=F.WALLS;GLASS2D=F.GLASS2D;VB=F.vb;
   document.querySelectorAll('[data-floor]').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.floor===n));
-  edit=null;selId=null;confirmDel=false;formErr='';openRoom=null;closePop();
+  edit=null;selId=null;confirmDel=false;formErr='';openRoom=null;closePop();closeCam();
   if(T&&T.setFloor)T.setFloor(n);
   lastSig=sig();rebuildAcc();update3D();renderSettings()}
 document.querySelectorAll('[data-floor]').forEach(b=>b.addEventListener('click',()=>setFloor(+b.dataset.floor)));
@@ -1093,10 +1141,73 @@ $('#thermo').addEventListener('click',e=>{const a=climateAcc();if(!a)return;cons
   if(b.dataset.pw){patchAcc(a.id,{on:a.on===false});toast(a.on===false?'Termostat kapatıldı':'Termostat açıldı');return}
   const v=Math.max(5,Math.min(30,(a.setT??22)+ +b.dataset.t));a.setT=v;renderThermo();update3D();
   clearTimeout(thermoT);thermoT=setTimeout(()=>patchAcc(a.id,{setT:v}),600)});
+
+/* ---------- Kamera penceresi (Imou; görüntü ev ağındaki köprüden HLS / MP4 / MJPEG olarak gelir) ---------- */
+let camId=null,camSig='',camHls=null,camSnap=null,camClock=null;
+const camWin=$('#camWin');
+const HLS_SRC='https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.13/hls.min.js';
+let hlsLoad=null;
+function loadHls(){if(window.Hls)return Promise.resolve(window.Hls);
+  return hlsLoad||(hlsLoad=new Promise((ok,no)=>{const sc=document.createElement('script');sc.src=HLS_SRC;sc.onload=()=>ok(window.Hls);sc.onerror=()=>{hlsLoad=null;no(new Error('hls'))};document.head.appendChild(sc)}))}
+const camType=u=>/\.m3u8(\?|#|$)|[?&/]stream\.m3u8|m3u8/i.test(u)?'hls':/\.(mp4|webm)(\?|#|$)|stream\.mp4/i.test(u)?'mp4':/\.(jpe?g|png)(\?|#|$)|snapshot|frame\.jpe?g/i.test(u)?'snap':'mjpeg';
+const CAM_ICO=`<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="${'M3 7h11v10H3zM14 10.5l7-3.5v10l-7-3.5z'}"/></svg>`;
+function camStop(){if(camHls){try{camHls.destroy()}catch(e){}camHls=null}clearInterval(camSnap);camSnap=null;
+  const v=camWin.querySelector('video');if(v){try{v.pause();v.removeAttribute('src');v.load()}catch(e){}}
+  const im=camWin.querySelector('.cam-view img');if(im)im.removeAttribute('src')}
+function camMsg(title,text){const vw=$('#camView');if(!vw)return;camStop();vw.querySelectorAll('video,img,.cam-msg').forEach(n=>n.remove());
+  vw.insertAdjacentHTML('afterbegin',`<div class="cam-msg">${CAM_ICO}<b>${esc(title)}</b><span>${text}</span></div>`);setLive(false)}
+function setLive(on){const l=camWin.querySelector('.live');if(l)l.classList.toggle('on',on);const s=$('#camState');if(s)s.textContent=on?'CANLI':''}
+function camFail(u){const mixed=location.protocol==='https:'&&/^http:/i.test(u);
+  camMsg('Görüntüye ulaşılamadı',mixed?'Panel https üzerinden açık, kameranın adresi ise ev ağında http. Tarayıcı bunu engeller. Paneli ev ağından aç ya da köprüye https adresi ver.':'Kamera veya köprü servisi yanıt vermiyor. Adresi Ayarlar’dan kontrol et.<br><button type="button" class="btn small ghost" data-camretry="1" style="margin-top:6px">Tekrar dene</button>')}
+function camPlay(a){const u=(a.stream||'').trim();const vw=$('#camView');
+  if(!u){camMsg('Görüntü adresi yok',`Ayarlar’da <b>${esc(a.name)}</b> kamerasını düzenleyip görüntü adresini ekle.`);return}
+  camStop();vw.querySelectorAll('video,img,.cam-msg').forEach(n=>n.remove());const t=camType(u);setLive(false);
+  if(t==='mjpeg'||t==='snap'){const im=new Image();im.alt=a.name;im.decoding='async';vw.prepend(im);
+    im.onload=()=>setLive(true);im.onerror=()=>camFail(u);
+    const bust=()=>u+(u.includes('?')?'&':'?')+'_t='+Date.now();im.src=t==='snap'?bust():u;
+    if(t==='snap')camSnap=setInterval(()=>{if(document.hidden)return;const n=new Image();n.onload=()=>{im.src=n.src;setLive(true)};n.src=bust()},2000);return}
+  const v=document.createElement('video');v.muted=true;v.autoplay=true;v.playsInline=true;v.setAttribute('playsinline','');vw.prepend(v);
+  v.addEventListener('playing',()=>setLive(true));v.addEventListener('error',()=>camFail(u));
+  if(t==='mp4'||v.canPlayType('application/vnd.apple.mpegurl')){v.src=u;v.play().catch(()=>{});return}
+  loadHls().then(Hls=>{if(camId!==a.id)return;if(!Hls.isSupported()){camMsg('Bu tarayıcı yayını oynatamıyor','HLS desteği yok. MJPEG adresi denenebilir.');return}
+    camHls=new Hls({lowLatencyMode:true,liveSyncDurationCount:2});camHls.on(Hls.Events.ERROR,(e,d)=>{if(d&&d.fatal)camFail(u)});
+    camHls.loadSource(u);camHls.attachMedia(v);v.play().catch(()=>{})}).catch(()=>camMsg('Oynatıcı yüklenemedi','Yayın oynatıcısı indirilemedi. İnternet bağlantısını kontrol et.'))}
+function fmtOsd(){const d=new Date(),p=n=>String(n).padStart(2,'0');return`${p(d.getDate())}.${p(d.getMonth()+1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`}
+function renderCam(){const a=ACC[camId];if(!a)return closeCam();
+  const cams=accList().filter(c=>c.kind==='camera').sort((x,y)=>x.name.localeCompare(y.name,'tr'));
+  camWin.innerHTML=`<div class="cam-head"><span class="live"></span><strong>${esc(a.name)}</strong><small>${esc(ROOMS[a.room]?.name||'')} · Kat ${FLOOR}</small>
+    <button type="button" data-camfull="1" aria-label="Tam ekran" title="Tam ekran"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    <button type="button" data-camclose="1" aria-label="Kamerayı kapat" title="Kapat"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="cam-view" id="camView" title="Çift tıkla: tam ekran"><div class="cam-osd" id="camOsd">${fmtOsd()}</div><div class="cam-osd r" id="camState"></div></div>
+    <div class="cam-foot"><span class="hint2">Çift tıkla: tam ekran</span>${cams.length>1?cams.map(c=>`<button type="button" data-camsw="${c.id}" aria-pressed="${c.id===a.id}">${esc(c.name)}</button>`).join(''):''}</div>`;
+  camSig=a.id+'|'+(a.stream||'');camPlay(a)}
+function openCam(id){if(!ACC[id])return;closePop();camId=id;camWin.hidden=false;renderCam();
+  clearInterval(camClock);camClock=setInterval(()=>{const o=$('#camOsd');if(o)o.textContent=fmtOsd()},1000);update3D();renderRooms()}
+function closeCam(){if(!camId&&camWin.hidden)return;setMax(false);if(document.fullscreenElement)document.exitFullscreen?.().catch(()=>{});
+  camStop();clearInterval(camClock);camId=null;camSig='';camWin.hidden=true;camWin.innerHTML='';update3D();renderRooms()}
+function refreshCam(){if(!camId)return;const a=ACC[camId];if(!a||!accF(a)||a.kind!=='camera')return closeCam();
+  if(a.id+'|'+(a.stream||'')!==camSig)renderCam()}
+/* tam ekran: önce tarayıcının tam ekranı, olmazsa pencereyi ekranı kaplayacak şekilde büyüt */
+function setMax(on){camWin.classList.toggle('max',on);needs=true}
+function toggleFull(){const vw=$('#camView');if(!vw)return;
+  const fe=document.fullscreenElement||document.webkitFullscreenElement;
+  if(fe){(document.exitFullscreen||document.webkitExitFullscreen).call(document);return}
+  if(camWin.classList.contains('max')){setMax(false);return}
+  const req=vw.requestFullscreen||vw.webkitRequestFullscreen;
+  if(req){try{const p=req.call(vw);if(p&&p.catch)p.catch(()=>setMax(true));return}catch(e){}}
+  setMax(true)}
+let camTap=0;
+camWin.addEventListener('pointerup',e=>{if(!e.target.closest('#camView')||e.target.closest('button'))return;const now=performance.now();
+  if(now-camTap<330){camTap=0;e.preventDefault();toggleFull()}else camTap=now});
+camWin.addEventListener('dblclick',e=>e.preventDefault());
+camWin.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.camclose)closeCam();else if(b.dataset.camfull)toggleFull();else if(b.dataset.camsw)openCam(b.dataset.camsw);
+  else if(b.dataset.camretry){const a=ACC[camId];if(a)camPlay(a)}});
 /* ---------- Oda listesi (Kontrol, sağ üst) ---------- */
 let openRoom=null;
-const UNIT_ORDER=['spot','pendant','sconce','lamp','strip','plug','cover','climate','sensor'];
+const UNIT_ORDER=['camera','spot','pendant','sconce','lamp','strip','plug','cover','climate','sensor'];
 function unitBtn(a){const k=KINDS[a.kind]||KINDS.spot,ic=icon(a.kind in KINDS?a.kind:'spot','currentColor',15);
+  if(a.kind==='camera')return`<button type="button" class="ubtn cam-u" data-cam="${a.id}" aria-pressed="${camId===a.id}">${ic}<span>${esc(a.name)}</span><small>${camId===a.id?'Açık':'Görüntüyü aç'}</small></button>`;
   if(a.kind==='sensor')return`<div class="ubtn info">${ic}<span>${esc(a.name)}</span><small>Sensör</small></div>`;
   if(a.kind==='climate')return`<div class="ubtn info">${ic}<span>${esc(a.name)}</span><small>Hedef ${(a.setT??22).toFixed(1).replace('.',',')}°</small></div>`;
   const on=!!a.on,st=a.kind==='cover'?(on?'Açık':'Kapalı'):on?(a.dim&&a.bri<100?'Açık · %'+a.bri:'Açık'):'Kapalı';
@@ -1109,6 +1220,7 @@ function renderRooms(){const el=$('#roomsOv');if(!el)return;const list=Object.va
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 9l6 6 6-6"/></svg></button>
       ${open?`<div class="rm-units">${items.length?items.map(unitBtn).join(''):'<div class="rm-empty">Bu odada cihaz yok. Ayarlar’dan ekleyebilirsin.</div>'}</div>`:''}</div>`}).join('')}
 $('#roomsOv').addEventListener('click',e=>{const h=e.target.closest('[data-room]');if(h){openRoom=openRoom===h.dataset.room?null:h.dataset.room;renderRooms();return}
+  const cb=e.target.closest('[data-cam]');if(cb){camId===cb.dataset.cam?closeCam():openCam(cb.dataset.cam);return}
   const u=e.target.closest('[data-unit]');if(!u)return;const a=ACC[u.dataset.unit];if(!a)return;const now=!a.on;patchAcc(a.id,{on:now});
   toast(a.kind==='cover'?`${a.name} ${now?'açılıyor':'kapanıyor'}`:`${a.name} ${now?'açıldı':'kapatıldı'}`)});
 
@@ -1138,7 +1250,7 @@ $('#pinForm').addEventListener('submit',async e=>{e.preventDefault();const m=$('
 function watchPin(){if(!DB)return;DB.doc('settings/lock').onSnapshot(sn=>{const d=sn.exists&&sn.data();PIN_HASH=d&&d.hash?String(d.hash):DEFAULT_PIN_HASH;
   try{localStorage.setItem('aksongur-pin',PIN_HASH)}catch(_){}},()=>{})}
 
-const _rs=renderSettings;renderSettings=function(){_rs();renderThermo();renderRooms()};
+const _rs=renderSettings;renderSettings=function(){_rs();renderThermo();renderRooms();refreshCam()};
 
 init3D();renderSettings();setFloor(FLOOR);initStore().then(watchPin);initWeather();
 })();
