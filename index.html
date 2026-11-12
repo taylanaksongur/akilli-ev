@@ -342,6 +342,8 @@ input[type=text],input[type=number],select{width:100%;background:var(--panel-2);
 
 <script src="/Aksi/hesap.js"></script>
 <script src="/Aksi/esitle.js"></script>
+<script>/* Aksi girişi zorunlu: oturum ya da alan yetkisi yoksa Aksi giriş ekranına */
+(function(a){var h=window.hesap,git=function(){location.replace("/Aksi/")};if(!h){git();return}if(!h.koru(a))return;addEventListener("aksi-oturum-kapandi",git);h.ben().then(function(){if(!h.alanVar(a))git()}).catch(function(e){if(!e||!e.ag)git()})})("ev")</script>
 <script>window.aksiEsitle&&aksiEsitle({alan:"ev",anahtarlar:{"aksongur-aksesuarlar":{},"aksongur-ihost":{},"aksongur-kamera-v3":{gizli:["pass"]}}})</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
