@@ -63,11 +63,11 @@ async function groupForAksi(env, auth) {
 
 export default {
   async fetch(req, env) {
-    const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'X-Key, Authorization', 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
+    const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization', 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
     if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
     const u = new URL(req.url), out = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: cors });
-    const g = groupFor(env, req.headers.get('X-Key') || u.searchParams.get('key')) || await groupForAksi(env, req.headers.get('Authorization'));
-    if (!g) return out({ error: 'Şifre yanlış' }, 401);
+    const g = await groupForAksi(env, req.headers.get('Authorization'));   // eski X-Key şifreleri emekli
+    if (!g) return out({ error: 'Aksi girişi gerekli' }, 401);
     try {
       if (u.pathname === '/cams') {
         const st = await status(env);
