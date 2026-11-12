@@ -14,26 +14,21 @@ Cloudflare panel → **Zero Trust → Networks → Tunnels → Create tunnel** (
 - **Public hostname:** ör. `ihost.<alan-adın>` → Service: `HTTP` → `<iHost-IP>:8787`.
   Alan adın yoksa tünel yerine geçici olarak Quick Tunnel kullanılabilir (adres her açılışta değişir).
 
-### 2. iHost'ta Docker
-eWeLink CUBE arayüzü (`http://ihost.local`) → **Eklentiler / Docker** → aç. İki konteyner ekle:
+### 2. iHost'ta Docker (tek konteyner)
+eWeLink CUBE arayüzü (`http://ihost.local`) → **Docker** → yeni konteyner:
 
-**aksi-kopru**
-- İmaj: `node:20-alpine`
-- Ağ: `host`
-- Ortam: `CUBE_ADRES=http://<iHost-IP>`
-- Birim: `/data` (eşleşme belirteci burada kalır)
-- Komut:
+- **Ad:** `aksi-kopru`
+- **İmaj:** `node:20-alpine`
+- **Ağ:** `host`
+- **Ortam:** `CUBE_ADRES=http://<iHost-IP>` (alan adı ve token'lı tünel varsa ayrıca `TUNEL_TOKEN=<token>`)
+- **Birim:** `/data`
+- **Komut:**
   ```
-  sh -c "wget -qO /k.js https://raw.githubusercontent.com/taylanaksongur/akilli-ev/main/ihost-koprusu/kopru.js && node /k.js"
+  sh -c "wget -qO /b.sh https://raw.githubusercontent.com/taylanaksongur/akilli-ev/main/ihost-koprusu/baslat.sh && sh /b.sh"
   ```
-  (Her yeniden başlatmada köprünün son sürümünü alır.)
-- Yeniden başlatma: her zaman
+- **Yeniden başlatma:** her zaman
 
-**aksi-tunel**
-- İmaj: `cloudflare/cloudflared:latest`
-- Ağ: `host`
-- Komut: `tunnel --no-autoupdate run --token <TOKEN>`
-- Yeniden başlatma: her zaman
+Konteyner köprüyü ve Cloudflare tünelini birlikte başlatır (iHost 32-bit ARM olduğu için resmi `cloudflared` imajı çalışmaz; doğru sürüm otomatik indirilir). `TUNEL_TOKEN` yoksa hızlı tünel açılır: adres kayıtlarda `https://….trycloudflare.com` olarak görünür, iHost yeniden başlayınca değişir.
 
 ### 3. Eşleştirme (bir kez)
 1. Ev paneli → Ayarlar → **SONOFF iHost bağlantısı** → köprü adresini yaz (`https://ihost.<alan-adın>`).
