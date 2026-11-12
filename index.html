@@ -1422,9 +1422,9 @@ function ihostDurumAl(){if(!IHLIST)return;let n=0;
     if(!!a.on!==c.acik){a.on=c.acik;n++}if(a.dim&&c.parlaklik!=null&&a.bri!==c.parlaklik){a.bri=c.parlaklik;n++}});
   if(n){afterChange(false)}}
 async function merossBaglan(){const m=$('#merossMsg'),e=$('#merossMail').value.trim(),p=$('#merossPass').value,k=$('#merossKod').value.trim();
-  if(!e||!p){m.textContent='E-posta ve şifreyi yaz';return}m.textContent='Bağlanıyor… (ağ taraması 30 sn sürebilir)';
+  if(!e||!p){m.textContent='E-posta ve şifreyi yaz';return}m.textContent='Bağlanıyor…';
   try{const j=await ihostIstek('/meross/giris',{eposta:e,sifre:p,kod:k||undefined});$('#merossPass').value='';$('#merossKod').value='';$('#merossKodL').hidden=true;
-    m.textContent=`Bağlandı · ${j.cihaz} cihaz. Ev ağında aranıyor (1-2 dk)…`;merossBekle()}
+    m.textContent=`Bağlandı · ${j.cihaz} cihaz (Meross bulutu üzerinden)`;setTimeout(()=>ihostListe(false),4000)}
   catch(x){$('#merossPass').value='';if(/doğrulama kodu/i.test(x.message)){$('#merossKodL').hidden=false;m.textContent='Meross uygulamasına gelen kodu yaz ve şifreyle tekrar bağlan'}else m.textContent=x.message}}
 async function merossTara(){const m=$('#merossMsg');m.textContent='Ağda aranıyor…';
   try{await ihostIstek('/meross/tara',{});m.textContent='Ev ağında aranıyor (1-2 dk)…';merossBekle()}catch(x){m.textContent=x.message}}

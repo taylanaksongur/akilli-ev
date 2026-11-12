@@ -20,4 +20,8 @@ else
   /cf tunnel --no-autoupdate --url "http://localhost:$PORT" > /tmp/cf.log 2>&1 &
   ( sleep 15; grep -Eo "https://[a-z0-9-]+\.trycloudflare\.com" /tmp/cf.log | tail -1 ) &
 fi
+# Meross bulut bağlantısı için mqtt paketi (bir kez, /data'ya)
+mkdir -p /data && cd /data && { [ -d node_modules/mqtt ] || npm i --no-audit --no-fund --silent mqtt@5 >/dev/null 2>&1 || echo "mqtt kurulamadı"; }
+cd /
+export NODE_PATH=/data/node_modules
 exec node /k.js

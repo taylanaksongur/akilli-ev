@@ -124,6 +124,33 @@ async function mrYerel(ip, uuid, yontem, ns, payload, ms = 1500) {
     return await r.json();
   } finally { clearTimeout(t); }
 }
+/* Meross bulut (MQTT): yerelde bulunamayan cihazlar için. Giriş bilgisinden userid + key ile bağlanır. */
+let mq = null, mqAppId = '', mqBekleyen = new Map();
+function mqBaglan() {
+  if (mq || !MR.userid || !MR.mqttDomain) return mq;
+  let mqtt; try { mqtt = require('mqtt'); } catch { console.log('mqtt paketi yok'); return null; }
+  mqAppId = md5('API' + rastgele(16));
+  mq = mqtt.connect(process.env.MEROSS_MQTT_URL || `mqtts://${MR.mqttDomain}:443`, { clientId: 'app:' + mqAppId, username: String(MR.userid),
+    password: md5(String(MR.userid) + MR.key), protocolVersion: 4, keepalive: 30, reconnectPeriod: 5000, rejectUnauthorized: true });
+  const cevap = `/app/${MR.userid}-${mqAppId}/subscribe`;
+  mq.on('connect', () => { mq.subscribe([`/app/${MR.userid}/subscribe`, cevap]); console.log('Meross bulut bağlandı'); });
+  mq.on('error', e => console.log('Meross bulut hata:', e.message));
+  mq.on('message', (t, m) => { try { const j = JSON.parse(m.toString()), b = mqBekleyen.get(j.header && j.header.messageId);
+    if (b) { mqBekleyen.delete(j.header.messageId); b(j); } } catch { } });
+  return mq;
+}
+function mrBulutIstek(uuid, yontem, ns, payload, ms = 6000) {
+  const c = mqBaglan();
+  if (!c) return Promise.reject(Object.assign(new Error('Meross bulut bağlantısı yok; Ayarlar’dan yeniden bağlan'), { durum: 503 }));
+  const ts = Math.floor(Date.now() / 1000), mid = md5(rastgele(16) + ts);
+  return new Promise((ok, red) => {
+    const t = setTimeout(() => { mqBekleyen.delete(mid); red(Object.assign(new Error('Meross cihazı yanıt vermedi'), { durum: 504 })); }, ms);
+    mqBekleyen.set(mid, j => { clearTimeout(t); ok(j); });
+    c.publish(`/appliance/${uuid}/subscribe`, JSON.stringify({ header: { from: `/app/${MR.userid}-${mqAppId}/subscribe`, messageId: mid,
+      method: yontem, namespace: ns, payloadVersion: 1, sign: md5(mid + MR.key + ts), timestamp: ts, triggerSrc: 'Android', uuid }, payload: payload || {} }));
+  });
+}
+const mrIstek = (c, yontem, ns, payload) => c.ip ? mrYerel(c.ip, c.uuid, yontem, ns, payload) : mrBulutIstek(c.uuid, yontem, ns, payload);
 /* Ev ağında Meross cihazlarını bul: iHost'un alt ağını tarar, uuid ile eşleştirir */
 let mrTaraniyor = false, mrSonTarama = 0;
 async function mrTara() {
@@ -156,27 +183,27 @@ async function mrBaglan(b) {
   const g = await mrGiris(String(b.eposta || '').trim(), String(b.sifre || ''), b.kod);
   const j = await mrBulut(g.domain, '/v1/Device/devList', {}, g.token);
   if (j.apiStatus !== 0) throw Object.assign(new Error('Meross cihaz listesi alınamadı'), { durum: 502 });
-  MR = { key: g.key, token: g.token, domain: g.domain, cihazlar: (j.data || []).map(d => ({
+  if (mq) { try { mq.end(true); } catch { } mq = null; }
+  MR = { key: g.key, token: g.token, domain: g.domain, userid: g.userid, mqttDomain: g.mqttDomain, cihazlar: (j.data || []).map(d => ({
     uuid: d.uuid, ad: d.devName, tur: d.deviceType,
     kanallar: (d.channels || [{}]).map((k, i) => ({ no: i, ad: k.devName || '' })),
     ip: (MR.cihazlar.find(x => x.uuid === d.uuid) || {}).ip || '' })) };
   mrKaydet();
-  mrTara();   // arka planda (1-2 dk)
-  return { cihaz: MR.cihazlar.length, bulunan: MR.cihazlar.filter(c => c.ip).length, taraniyor: true };
+  mqBaglan();
+  return { cihaz: MR.cihazlar.length, bulunan: MR.cihazlar.filter(c => c.ip).length, bulut: !!MR.mqttDomain };
 }
 /* Panel listesine Meross kanalları: id = meross:<uuid>:<kanal> */
 async function mrListe() {
   if (!MR.key) return [];
-  if (MR.cihazlar.some(c => !c.ip) && Date.now() - mrSonTarama > 10 * 60e3) mrTara();
   const out = [];
   await Promise.all(MR.cihazlar.map(async c => {
     let dur = null;
-    if (c.ip) try {
-      const j = await mrYerel(c.ip, c.uuid, 'GET', 'Appliance.System.All', {});
+    try {
+      const j = await mrIstek(c, 'GET', 'Appliance.System.All', {});
       const dg = j.payload && j.payload.all && j.payload.all.digest;
       dur = {}; ((dg && dg.togglex) || []).forEach(t => dur[t.channel] = t.onoff === 1);
       if (dg && dg.toggle && 'onoff' in dg.toggle) dur[0] = dg.toggle.onoff === 1;
-    } catch { if (Date.now() - mrSonTarama > 10 * 60e3) mrTara(); }
+    } catch { }
     const coklu = c.kanallar.length > 1;
     (coklu ? c.kanallar.slice(1) : c.kanallar).forEach(k => out.push({
       id: `meross:${c.uuid}:${k.no}`, ad: coklu ? `${c.ad} · ${k.ad || k.no}` : c.ad, tur: 'switch', kaynak: 'Meross',
@@ -188,10 +215,9 @@ async function mrKomut(id, acik) {
   const [, uuid, kanal] = id.split(':');
   const c = MR.cihazlar.find(x => x.uuid === uuid);
   if (!c) throw Object.assign(new Error('Meross cihazı bulunamadı'), { durum: 404 });
-  if (!c.ip) { mrTara(); throw Object.assign(new Error('Meross cihazı ağda bulunamadı'), { durum: 503 }); }
-  const j = await mrYerel(c.ip, c.uuid, 'SET', 'Appliance.Control.ToggleX', { togglex: { channel: +kanal || 0, onoff: acik ? 1 : 0 } });
+  const j = await mrIstek(c, 'SET', 'Appliance.Control.ToggleX', { togglex: { channel: +kanal || 0, onoff: acik ? 1 : 0 } });
   if (j && j.header && j.header.method === 'ERROR') {   // eski cihazlar: Toggle
-    await mrYerel(c.ip, c.uuid, 'SET', 'Appliance.Control.Toggle', { toggle: { onoff: acik ? 1 : 0 } });
+    await mrIstek(c, 'SET', 'Appliance.Control.Toggle', { toggle: { onoff: acik ? 1 : 0 } });
   }
 }
 
@@ -241,7 +267,7 @@ http.createServer(async (req, res) => {
     }
     if (yol === '/meross/durum' && req.method === 'GET') {
       return yanit(res, 200, { taraniyor: mrTaraniyor, son: MR.sonTarama || null,
-        cihazlar: MR.cihazlar.map(c => ({ ad: c.ad, ip: c.ip || null })), surum: 3 });
+        cihazlar: MR.cihazlar.map(c => ({ ad: c.ad, ip: c.ip || null })), surum: 4, bulut: !!(mq && mq.connected), bulutBilgi: !!MR.mqttDomain });
     }
     if (yol === '/cihazlar' && req.method === 'GET') {
       const [ih, mr] = await Promise.all([
@@ -290,3 +316,4 @@ async function bildir() {
   } catch (e) { console.log('Bildirim gönderilemedi:', e.message); }
 }
 setInterval(bildir, 10000); setTimeout(bildir, 3000);
+setTimeout(mqBaglan, 2000);
