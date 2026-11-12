@@ -133,12 +133,16 @@ async function mrTara() {
     const ag = (CUBE.match(/\/\/(\d+\.\d+\.\d+)\.\d+/) || [])[1];
     if (!ag) return;
     const ips = Array.from({ length: 254 }, (_, i) => `${ag}.${i + 1}`);
-    const bul = {};
-    for (let i = 0; i < ips.length; i += 32) await Promise.all(ips.slice(i, i + 32).map(async ip => {
-      try { const j = await mrYerel(ip, '', 'GET', 'Appliance.System.All', {}, 900);
-        const u = j && j.payload && j.payload.all && j.payload.all.system && j.payload.all.system.hardware && j.payload.all.system.hardware.uuid;
-        if (u) bul[u] = ip; } catch { }
+    const bul = {}, yanit = [];
+    for (let i = 0; i < ips.length; i += 24) await Promise.all(ips.slice(i, i + 24).map(async ip => {
+      try { const j = await mrYerel(ip, '', 'GET', 'Appliance.System.All', {}, 2500);
+        if (!j || !j.header) return;
+        const u = j.payload && j.payload.all && j.payload.all.system && j.payload.all.system.hardware && j.payload.all.system.hardware.uuid;
+        if (u) bul[u] = ip;
+        yanit.push(ip + (u ? ' ' + u.slice(-6) : ' ' + j.header.method + ' ' + JSON.stringify(j.payload || {}).slice(0, 60)));
+      } catch { }
     }));
+    console.log('Meross yanıt veren adresler:', yanit.length ? yanit.join(' | ') : 'yok');
     MR.cihazlar.forEach(c => { if (bul[c.uuid]) c.ip = bul[c.uuid]; });
     mrKaydet();
     console.log('Meross tarama:', Object.keys(bul).length, 'cihaz bulundu');
