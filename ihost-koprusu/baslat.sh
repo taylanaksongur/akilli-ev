@@ -1,5 +1,5 @@
 #!/bin/sh
-# iHost Docker'da tek konteyner: köprü + Cloudflare hızlı tüneli. İmaj: node:20-alpine
+# iHost Docker'da tek konteyner: köprü + Cloudflare hızlı tüneli. İmaj: arm32v7/node:20-alpine
 # Komut: sh -c "wget -qO /b.sh https://raw.githubusercontent.com/taylanaksongur/akilli-ev/main/ihost-koprusu/baslat.sh && sh /b.sh"
 DEPO=https://raw.githubusercontent.com/taylanaksongur/akilli-ev/main/ihost-koprusu
 case "$(uname -m)" in

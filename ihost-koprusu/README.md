@@ -18,7 +18,7 @@ Cloudflare panel → **Zero Trust → Networks → Tunnels → Create tunnel** (
 eWeLink CUBE arayüzü (`http://ihost.local`) → **Docker** → yeni konteyner:
 
 - **Ad:** `aksi-kopru`
-- **İmaj:** `node:20-alpine`
+- **İmaj:** `arm32v7/node:20-alpine` (iHost 32-bit ARM; Docker → Image → Download)
 - **Ağ:** `host`
 - **Ortam:** `CUBE_ADRES=http://<iHost-IP>` (alan adı ve token'lı tünel varsa ayrıca `TUNEL_TOKEN=<token>`)
 - **Birim:** `/data`
