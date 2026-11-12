@@ -67,6 +67,13 @@ nav.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--
 .room-views button[aria-pressed="true"]{background:var(--accent);color:#fff}
 .stage-wrap{max-width:1200px;width:100%;margin:0 auto;padding-top:2vh;position:relative}
 .stage{position:relative;width:100%;height:min(76vh,820px);min-height:340px;border-radius:22px;overflow:hidden;background:transparent}
+.bal-ov{position:absolute;inset:0;z-index:2;pointer-events:none}
+.bal-ov svg{position:absolute;inset:0;width:100%;height:100%}
+.bal-m{position:absolute;transform:translate(-50%,-50%);width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;pointer-events:auto;cursor:pointer;border:1px solid #3a4590;background:rgba(20,26,70,.88);color:#8c94c9;padding:0}
+.bal-m.on{background:#ffbf5e;color:#3a2200;border-color:#ffd38f}
+.bal-l{position:absolute;transform:translateX(-50%);font-size:11px;color:#c9cff5;white-space:nowrap;pointer-events:none;text-shadow:0 1px 2px #000}
+.bal-t{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;border:1px solid #3a4590;background:rgba(20,26,70,.8);color:#c9cff5;font-size:12px;cursor:pointer}
+.bal-t.on{background:#ffbf5e;color:#3a2200;border-color:#ffd38f}
 .stage-ctrl{position:absolute;left:12px;bottom:12px;display:flex;gap:8px;z-index:3;flex-wrap:wrap}
 .stage-ctrl button{display:inline-flex;align-items:center;gap:7px;padding:9px 13px;border-radius:12px;font-size:12px;font-weight:600;
   background:rgba(24,31,69,.82);border:1px solid var(--line);color:var(--fg);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
@@ -888,6 +895,7 @@ function init3D(){
   function hitAt(e){const r=el.getBoundingClientRect();v2.set(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);ray.setFromCamera(v2,camera);
     const h=ray.intersectObjects(T.HIT,false);return h.length?h[0].object.userData.id:null}
   function tap(e){const id=hitAt(e);if(!id||!ACC[id])return;const a=ACC[id];
+    if(BAL.on&&KINDS[a.kind]&&KINDS[a.kind].light){toast('Balon modu açık: kenardaki işaretten kontrol et');return}
     if(a.kind==='camera'){openCam(id);return}
     if(a.kind==='sensor'){toast(`${a.name}: henüz veri yok`);return}
     if(a.kind==='climate'){openPop(a,e);return}
@@ -1448,6 +1456,48 @@ patchAcc=function(id,patch){const a=ACC[id];const r=_patchAcc(id,patch);
   return r};
 if(ihostHazir()){ihostListe(false);setInterval(()=>{if(!document.hidden)ihostListe(false)},15000);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)ihostListe(false)})}
+/* Balon modu: ışıklardan kenardaki işaretlere kılavuz çizgisi */
+const BAL={on:false};
+(function(){
+  let on=false;try{on=localStorage.getItem('balonMod')==='1'}catch(e){}
+  const stage=document.getElementById('stage');if(!stage)return;
+  const btn=document.createElement('button');btn.type='button';btn.className='bal-t';
+  btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="18" cy="6" r="3"/><path d="M15.5 7.5 6 17"/><circle cx="6" cy="17" r="1.5"/></svg><span>Balon</span>';
+  btn.setAttribute('aria-pressed','false');(stage.querySelector('.stage-ctrl')||stage).appendChild(btn);
+  const ov=document.createElement('div');ov.className='bal-ov';ov.hidden=true;
+  ov.innerHTML='<svg></svg>';stage.appendChild(ov);const svg=ov.firstChild;
+  const marks={};
+  function set(v){BAL.on=on=v;btn.classList.toggle('on',v);btn.setAttribute('aria-pressed',String(v));ov.hidden=!v;
+    try{localStorage.setItem('balonMod',v?'1':'0')}catch(e){}if(v)tick()}
+  btn.onclick=()=>set(!on);
+  function mark(id){let m=marks[id];if(m)return m;
+    const b=document.createElement('button');b.type='button';b.className='bal-m';
+    const l=document.createElement('div');l.className='bal-l';
+    b.onclick=()=>{const a=ACC[id];if(!a)return;const now=!a.on;patchAcc(id,{on:now});toast(`${a.name} ${now?'açıldı':'kapatıldı'}`)};
+    ov.appendChild(b);ov.appendChild(l);return marks[id]={b,l}}
+  const v=window.THREE?new THREE.Vector3():null;
+  function tick(){if(!on)return;requestAnimationFrame(tick);
+    if(!T||!T.camera||!v||stage.offsetParent===null)return;
+    const W=stage.clientWidth,H=stage.clientHeight,groups={};
+    (T.HIT||[]).forEach(h=>{const id=h.userData.id,a=ACC[id];if(!a||!KINDS[a.kind]||!KINDS[a.kind].light||!accF(a))return;
+      h.getWorldPosition(v);v.project(T.camera);if(v.z>1)return;
+      const g=groups[id]||(groups[id]={x:0,y:0,n:0});g.x+=(v.x+1)/2*W;g.y+=(1-v.y)/2*H;g.n++});
+    const L=[],R=[];Object.keys(groups).forEach(id=>{const g=groups[id],p={id,x:g.x/g.n,y:g.y/g.n};(p.x<W/2?L:R).push(p)});
+    let d='',dOn='';const seen={};
+    const ro=document.getElementById('roomsOv'),sr=stage.getBoundingClientRect();let rTop=120;if(ro&&ro.offsetParent){const r=ro.getBoundingClientRect();if(r.left<sr.right&&r.right>sr.left&&r.bottom>sr.top)rTop=Math.max(rTop,r.bottom-sr.top+40)}
+    [[L,32,120],[R,W-32,rTop]].forEach(([list,mx,top])=>{list.sort((a,b)=>a.y-b.y);const span=Math.max(0,H-130-top),n=list.length;
+      list.forEach((p,i)=>{const my=n>1?top+span*i/(n-1):top+span/2,a=ACC[p.id],m=mark(p.id);seen[p.id]=1;
+        const ex=mx<W/2?mx+22:mx-22,kx=p.x+(mx<W/2?-14:14);
+        const seg=`M${p.x.toFixed(1)},${p.y.toFixed(1)}L${kx.toFixed(1)},${my.toFixed(1)}L${ex},${my.toFixed(1)}`;
+        if(a.on)dOn+=seg;else d+=seg;
+        m.b.style.cssText=`left:${mx}px;top:${my}px`;m.b.classList.toggle('on',!!a.on);m.b.innerHTML=icon(a.kind,'currentColor',20);
+        m.b.setAttribute('aria-label',a.name);m.l.style.cssText=`left:${mx}px;top:${my+24}px`;m.l.textContent=a.name});
+    });
+    for(const id in marks)if(!seen[id]){marks[id].b.remove();marks[id].l.remove();delete marks[id]}
+    svg.innerHTML=`<path d="${d}" fill="none" stroke="#8c94c9" stroke-width="1" stroke-dasharray="4 3"/><path d="${dOn}" fill="none" stroke="#ffbf5e" stroke-width="1.4"/>`;
+  }
+  set(on);
+})();
 })();
 
 </script>
