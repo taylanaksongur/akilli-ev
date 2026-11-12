@@ -69,11 +69,16 @@ nav.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--
 .stage{position:relative;width:100%;height:min(76vh,820px);min-height:340px;border-radius:22px;overflow:hidden;background:transparent}
 .bal-ov{position:absolute;inset:0;z-index:2;pointer-events:none}
 .bal-ov svg{position:absolute;inset:0;width:100%;height:100%}
-.bal-m{position:absolute;transform:translate(-50%,-50%);width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;pointer-events:auto;cursor:pointer;border:1px solid #3a4590;background:rgba(20,26,70,.88);color:#8c94c9;padding:0}
-.bal-m.on{background:#ffbf5e;color:#3a2200;border-color:#ffd38f}
-.bal-l{position:absolute;transform:translateX(-50%);font-size:11px;color:#c9cff5;white-space:nowrap;pointer-events:none;text-shadow:0 1px 2px #000}
-.bal-t{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;border:1px solid #3a4590;background:rgba(20,26,70,.8);color:#c9cff5;font-size:12px;cursor:pointer}
-.bal-t.on{background:#ffbf5e;color:#3a2200;border-color:#ffd38f}
+.bal-m{position:absolute;transform:translate(-50%,-50%);width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;pointer-events:auto;cursor:pointer;border:2px solid #8c94c9;background:rgba(14,18,48,.92);color:#c9cff5;padding:0;-webkit-tap-highlight-color:transparent}
+.bal-m.on{background:#ffbf5e;color:#3a2200;border-color:#ffe2a8;box-shadow:0 0 0 3px rgba(255,191,94,.25)}
+.bal-m:focus-visible,.bal-x:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.bal-l{position:absolute;transform:translateX(-50%);font-size:11px;color:#e3e6fb;white-space:nowrap;pointer-events:none;text-shadow:0 1px 2px #000,0 0 4px #000}
+.bal-x{position:absolute;right:12px;pointer-events:auto;padding:8px 12px;border-radius:12px;border:1px solid var(--line);background:rgba(24,31,69,.92);color:var(--fg);font-size:12px;font-weight:600}
+.bal-list{position:absolute;right:12px;pointer-events:auto;display:flex;flex-direction:column;gap:6px;padding:8px;border-radius:14px;border:1px solid var(--line);background:rgba(14,18,48,.96);max-height:50%;overflow:auto}
+.bal-list button{display:flex;align-items:center;gap:8px;min-height:44px;padding:0 12px;border-radius:10px;border:1px solid #3a4590;background:transparent;color:#c9cff5;font-size:13px}
+.bal-list button.on{background:#ffbf5e;color:#3a2200;border-color:#ffe2a8}
+.stage-ctrl .bal-t.act{background:var(--accent);border-color:var(--accent);color:#fff}
+.stage-ctrl .bal-t.act svg{color:#fff}
 .stage-ctrl{position:absolute;left:12px;bottom:12px;display:flex;gap:8px;z-index:3;flex-wrap:wrap}
 .stage-ctrl button{display:inline-flex;align-items:center;gap:7px;padding:9px 13px;border-radius:12px;font-size:12px;font-weight:600;
   background:rgba(24,31,69,.82);border:1px solid var(--line);color:var(--fg);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
@@ -275,7 +280,7 @@ input[type=text],input[type=number],select{width:100%;background:var(--panel-2);
       <div class="rooms-ov" id="roomsOv" aria-label="Odalar"></div>
       <div class="cam" id="camWin" hidden role="dialog" aria-label="Kamera görüntüsü"></div>
       <div class="stage-msg" id="stageMsg"></div>
-      <div class="hint">Tek parmak: döndür · İki parmak: kaydır ve yakınlaş · Farede sağ tık veya Shift ile sürükle: kaydır · Boş yere çift dokun: görünümü sıfırla · Aksesuara dokun: aç / kapat · Kameraya dokun: görüntüyü aç · <span id="ver">Sürüm 2.2</span></div>
+      <div class="hint">Tek parmak: döndür · İki parmak: kaydır ve yakınlaş · Farede sağ tık veya Shift ile sürükle: kaydır · Boş yere çift dokun: görünümü sıfırla · Aksesuara dokun: aç / kapat · Kameraya dokun: görüntüyü aç · <span id="ver">Sürüm 2.3</span></div>
     </div>
   </section>
 
@@ -895,7 +900,7 @@ function init3D(){
   function hitAt(e){const r=el.getBoundingClientRect();v2.set(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);ray.setFromCamera(v2,camera);
     const h=ray.intersectObjects(T.HIT,false);return h.length?h[0].object.userData.id:null}
   function tap(e){const id=hitAt(e);if(!id||!ACC[id])return;const a=ACC[id];
-    if(BAL.on&&KINDS[a.kind]&&KINDS[a.kind].light){toast('Balon modu açık: kenardaki işaretten kontrol et');return}
+    if(BAL.on&&KINDS[a.kind]&&KINDS[a.kind].light){toast('Işık düğmeleri açık: ışığın yanındaki yuvarlak düğmeden aç/kapa');return}
     if(a.kind==='camera'){openCam(id);return}
     if(a.kind==='sensor'){toast(`${a.name}: henüz veri yok`);return}
     if(a.kind==='climate'){openPop(a,e);return}
@@ -1456,48 +1461,77 @@ patchAcc=function(id,patch){const a=ACC[id];const r=_patchAcc(id,patch);
   return r};
 if(ihostHazir()){ihostListe(false);setInterval(()=>{if(!document.hidden)ihostListe(false)},15000);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)ihostListe(false)})}
-/* Balon modu: ışıklardan kenardaki işaretlere kılavuz çizgisi */
+/* Işık düğmeleri (balon modu): ışık nesnesinden yanındaki düğmeye kısa kılavuz çizgisi */
 const BAL={on:false};
 (function(){
-  let on=false;try{on=localStorage.getItem('balonMod')==='1'}catch(e){}
+  let on=false,running=false,sig='',pos={},listOpen=false;try{on=localStorage.getItem('balonMod')==='1'}catch(e){}
   const stage=document.getElementById('stage');if(!stage)return;
   const btn=document.createElement('button');btn.type='button';btn.className='bal-t';
-  btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="18" cy="6" r="3"/><path d="M15.5 7.5 6 17"/><circle cx="6" cy="17" r="1.5"/></svg><span>Balon</span>';
+  btn.title='Işıkları, yanlarında beliren yuvarlak düğmelerden aç/kapa';
+  btn.innerHTML='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="17" cy="7" r="4"/><path d="M14 10 6 18"/><circle cx="5" cy="19" r="1.5"/></svg><span>Işık düğmeleri</span>';
   btn.setAttribute('aria-pressed','false');(stage.querySelector('.stage-ctrl')||stage).appendChild(btn);
-  const ov=document.createElement('div');ov.className='bal-ov';ov.hidden=true;
-  ov.innerHTML='<svg></svg>';stage.appendChild(ov);const svg=ov.firstChild;
+  const ov=document.createElement('div');ov.className='bal-ov';ov.hidden=true;ov.innerHTML='<svg aria-hidden="true"></svg>';stage.appendChild(ov);const svg=ov.firstChild;
+  const more=document.createElement('button');more.type='button';more.className='bal-x';more.hidden=true;ov.appendChild(more);
+  const list=document.createElement('div');list.className='bal-list';list.hidden=true;ov.appendChild(list);
+  more.onclick=()=>{listOpen=!listOpen;sig=''};
   const marks={};
-  function set(v){BAL.on=on=v;btn.classList.toggle('on',v);btn.setAttribute('aria-pressed',String(v));ov.hidden=!v;
-    try{localStorage.setItem('balonMod',v?'1':'0')}catch(e){}if(v)tick()}
+  const flip=id=>{const a=ACC[id];if(!a)return;const now=!a.on;patchAcc(id,{on:now});toast(`${a.name} ${now?'açıldı':'kapatıldı'}`);sig=''};
+  function set(v,first){BAL.on=on=v;btn.classList.toggle('act',v);btn.setAttribute('aria-pressed',String(v));ov.hidden=!v;sig='';
+    try{localStorage.setItem('balonMod',v?'1':'0')}catch(e){}
+    if(v&&!first)toast('Işıkları yanlarındaki yuvarlak düğmelerden aç/kapa');
+    if(v&&!running){running=true;requestAnimationFrame(tick)}}
   btn.onclick=()=>set(!on);
   function mark(id){let m=marks[id];if(m)return m;
     const b=document.createElement('button');b.type='button';b.className='bal-m';
-    const l=document.createElement('div');l.className='bal-l';
-    b.onclick=()=>{const a=ACC[id];if(!a)return;const now=!a.on;patchAcc(id,{on:now});toast(`${a.name} ${now?'açıldı':'kapatıldı'}`)};
-    ov.appendChild(b);ov.appendChild(l);return marks[id]={b,l}}
+    const l=document.createElement('div');l.className='bal-l';l.setAttribute('aria-hidden','true');
+    b.onclick=()=>flip(id);ov.insertBefore(b,more);ov.insertBefore(l,more);return marks[id]={b,l,st:null}}
+  function paint(m,a){const st=(a.on?1:0)+a.kind+a.name;if(m.st===st)return;m.st=st;
+    m.b.classList.toggle('on',!!a.on);m.b.setAttribute('aria-pressed',String(!!a.on));m.b.setAttribute('aria-label',`${a.name}: ${a.on?'açık':'kapalı'}`);
+    m.b.innerHTML=icon(a.kind,'currentColor',20);m.l.textContent=a.name}
   const v=window.THREE?new THREE.Vector3():null;
-  function tick(){if(!on)return;requestAnimationFrame(tick);
+  const box=el=>{if(!el||el.hidden||!el.offsetParent)return null;const r=el.getBoundingClientRect(),sr=stage.getBoundingClientRect();
+    if(r.width<2||r.right<sr.left||r.left>sr.right||r.bottom<sr.top||r.top>sr.bottom)return null;return{l:r.left-sr.left-6,t:r.top-sr.top-6,r:r.right-sr.left+6,b:r.bottom-sr.top+6}};
+  function tick(){if(!on){running=false;return}requestAnimationFrame(tick);
     if(!T||!T.camera||!v||stage.offsetParent===null)return;
-    const W=stage.clientWidth,H=stage.clientHeight,groups={};
-    (T.HIT||[]).forEach(h=>{const id=h.userData.id,a=ACC[id];if(!a||!KINDS[a.kind]||!KINDS[a.kind].light||!accF(a))return;
-      h.getWorldPosition(v);v.project(T.camera);if(v.z>1)return;
-      const g=groups[id]||(groups[id]={x:0,y:0,n:0});g.x+=(v.x+1)/2*W;g.y+=(1-v.y)/2*H;g.n++});
-    const P=Object.keys(groups).map(id=>{const g=groups[id];return{id,x:g.x/g.n,y:g.y/g.n}}).sort((a,b)=>a.y-b.y);
-    const ro=document.getElementById('roomsOv'),sr=stage.getBoundingClientRect();let rb=null;
-    if(ro&&ro.offsetParent){const r=ro.getBoundingClientRect();if(r.left<sr.right&&r.right>sr.left&&r.bottom>sr.top)rb={l:r.left-sr.left,b:r.bottom-sr.top}}
-    const placed=[],seen={};let d='',dOn='';const cl=(v,a,b)=>Math.max(a,Math.min(b,v));
-    P.forEach(p=>{const side=p.x<W/2?-1:1;let mx=cl(p.x+side*56,28,W-28),my=cl(p.y-56,40,H-120);
-      if(rb&&mx>rb.l-28&&my<rb.b+28)my=rb.b+28;
-      for(let k=0;k<40&&placed.some(q=>Math.abs(q.x-mx)<50&&Math.abs(q.y-my)<60);k++)my+=10;
-      placed.push({x:mx,y:my});seen[p.id]=1;const a=ACC[p.id],m=mark(p.id);
-      const dx=mx-p.x,dy=my-p.y,len=Math.hypot(dx,dy)||1,ex=mx-dx/len*22,ey=my-dy/len*22;
+    const W=stage.clientWidth,H=stage.clientHeight,cam=T.camera;cam.updateMatrixWorld();
+    let k=W+'|'+H+'|'+FLOOR+'|'+listOpen+'|'+cam.matrixWorld.elements.map(e=>e.toFixed(3)).join(',');
+    const lights=[],obst=[];
+    (T.HIT||[]).forEach(h=>{const a=ACC[h.userData.id];if(!a||!accF(a)||!KINDS[a.kind])return;if(KINDS[a.kind].light)lights.push(h);else obst.push(h)});
+    lights.forEach(h=>{const a=ACC[h.userData.id];k+='|'+a.id+(a.on?1:0)+a.name});
+    if(k===sig)return;sig=k;
+    const proj=h=>{h.getWorldPosition(v);v.project(cam);return v.z>1?null:{x:(v.x+1)/2*W,y:(1-v.y)/2*H}};
+    const groups={};lights.forEach(h=>{const q=proj(h);if(!q)return;const id=h.userData.id,g=groups[id]||(groups[id]={x:0,y:0,n:0});g.x+=q.x;g.y+=q.y;g.n++});
+    const zones=[box(document.getElementById('roomsOv')),box(document.getElementById('thermo')),box(stage.querySelector('.stage-ctrl'))].filter(Boolean);
+    const busy=[];obst.forEach(h=>{const q=proj(h);if(q)busy.push({x:q.x,y:q.y,w:30,h:30})});
+    const P=Object.keys(groups).sort().map(id=>{const g=groups[id];return{id,x:g.x/g.n,y:g.y/g.n}});
+    Object.values(groups).forEach(g=>busy.push({x:g.x/g.n,y:g.y/g.n,w:14,h:14}));
+    const DIR=[[-1,-1],[1,-1],[-1,0],[1,0],[0,-1],[-1,1],[1,1],[0,1]],DIST=[60,95,135];
+    const placed=[],seen={},over=[];let d='',dOn='';
+    const fits=(x,y,wl)=>{const L=x-Math.max(26,wl/2),R=x+Math.max(26,wl/2),Tp=y-26,B=y+40;
+      if(L<4||R>W-4||Tp<4||B>H-4)return false;
+      if(zones.some(z=>R>z.l&&L<z.r&&B>z.t&&Tp<z.b))return false;
+      if(placed.some(q=>R>q.L-8&&L<q.R+8&&B>q.T-6&&Tp<q.B+6))return false;
+      if(busy.some(o=>Math.abs(o.x-x)<(R-L)/2+o.w/2&&o.y>Tp-o.h/2&&o.y<B+o.h/2))return false;return true};
+    P.forEach(p=>{const a=ACC[p.id],wl=Math.min(140,a.name.length*6.2+8);const pref=p.x<W/2?0:1;
+      const cand=[];const prev=pos[p.id];if(prev)cand.push(prev);
+      DIST.forEach(r=>DIR.forEach((dv,i)=>{const di=(i+pref)%DIR.length;cand.push({di:(pref&&i<2)?1-i:i,r})}));
+      let got=null;for(const c of cand){const dv=DIR[c.di],n=Math.hypot(dv[0],dv[1]);const x=p.x+dv[0]/n*c.r,y=p.y+dv[1]/n*c.r;
+        if(fits(x,y,wl)){got={x,y,c:{di:c.di,r:c.r}};break}}
+      if(!got){over.push(p.id);delete pos[p.id];return}
+      pos[p.id]=got.c;seen[p.id]=1;const L=got.x-Math.max(26,wl/2),R=got.x+Math.max(26,wl/2);placed.push({L,R,T:got.y-26,B:got.y+40});
+      const m=mark(p.id);paint(m,a);
+      const dx=got.x-p.x,dy=got.y-p.y,len=Math.hypot(dx,dy)||1,ex=got.x-dx/len*23,ey=got.y-dy/len*23;
       const seg=`M${p.x.toFixed(1)},${p.y.toFixed(1)}L${ex.toFixed(1)},${ey.toFixed(1)}`;if(a.on)dOn+=seg;else d+=seg;
-      m.b.style.cssText=`left:${mx}px;top:${my}px`;m.b.classList.toggle('on',!!a.on);m.b.innerHTML=icon(a.kind,'currentColor',20);
-      m.b.setAttribute('aria-label',a.name);m.l.style.cssText=`left:${mx}px;top:${my+24}px`;m.l.textContent=a.name});
+      m.b.style.left=got.x+'px';m.b.style.top=got.y+'px';m.l.style.left=got.x+'px';m.l.style.top=(got.y+24)+'px'});
     for(const id in marks)if(!seen[id]){marks[id].b.remove();marks[id].l.remove();delete marks[id]}
-    svg.innerHTML=`<path d="${d}" fill="none" stroke="#4a55a8" stroke-width="1.4" stroke-dasharray="4 3"/><path d="${dOn}" fill="none" stroke="#ffbf5e" stroke-width="1.4"/>`;
+    svg.innerHTML=`<path d="${d}" fill="none" stroke="#8c94c9" stroke-width="2" stroke-dasharray="5 4"/><path d="${dOn}" fill="none" stroke="#ffbf5e" stroke-width="2"/>`;
+    const cz=zones.find(z=>z.r>W-20&&z.t<40),top=cz?cz.b+8:12;
+    more.hidden=!over.length;if(over.length){more.textContent=`+${over.length} ışık`;more.style.top=top+'px';more.setAttribute('aria-expanded',String(listOpen))}
+    if(!over.length)listOpen=false;list.hidden=!listOpen;
+    if(listOpen){list.style.top=(top+44)+'px';list.innerHTML='';over.forEach(id=>{const a=ACC[id],b=document.createElement('button');b.type='button';b.className=a.on?'on':'';
+      b.setAttribute('aria-pressed',String(!!a.on));b.innerHTML=icon(a.kind,'currentColor',18)+'<span></span>';b.lastChild.textContent=a.name;b.onclick=()=>flip(id);list.appendChild(b)})}
   }
-  set(on);
+  set(on,true);
 })();
 })();
 
