@@ -60,6 +60,10 @@ async function cube(yontem, yol, govde) {
   if (!r.ok || j.error) throw Object.assign(new Error(j.message || 'iHost hatası ' + (j.error || r.status)), { durum: 502 });
   return j.data;
 }
+function hareketOku(s) {
+  const hv = s.motion ? s.motion.motion : s.detect ? s.detect.detected : s.presence ? (s.presence.presence !== undefined ? s.presence.presence : s.presence.detected) : undefined;
+  return typeof hv === 'boolean' ? hv : typeof hv === 'string' ? /^(true|on|detected|occupied|presence)$/i.test(hv) : null;
+}
 function sadele(c) {
   const s = c.state || {};
   const kanallar = s.toggle ? Object.keys(s.toggle).sort((a, b) => a - b) : [];
@@ -108,11 +112,54 @@ async function cubeListe() {
     const sn = c.id.split(':')[0];
     if (c.hareket === true && sonOnceki[sn] !== true) { SON[sn] = Date.now(); degisti = true; }
     if (c.hareket !== null && c.hareket !== undefined) sonOnceki[sn] = c.hareket;
+    const an = ANLIK[sn];
+    if (an) {   /* durumda hareket alanı yoksa anlık olaydan al; açık kalan 'hareket var' 3 dk sonra düşer */
+      if ((c.hareket === null || c.hareket === undefined) && typeof an.v === 'boolean') c.hareket = an.v === true && Date.now() - an.vt < 180e3;
+      c.yetenekler = Array.from(new Set((c.yetenekler || []).concat(an.k)));
+    }
     if (SON[sn]) c.sonHareket = SON[sn];
   });
   if (degisti && Date.now() - sonKaydetT > 5000) { sonKaydetT = Date.now(); try { fs.mkdirSync('/data', { recursive: true }); fs.writeFileSync(HAREKET_DOSYA, JSON.stringify(SON)); } catch { } }
   return l;
 }
+/* iHost olay akışı (SSE): Zigbee hareket sensörleri durumu yalnız olay olarak bildirir */
+const ANLIK = {}; const OLAYLAR = [];
+function olayIsle(ad, ham) {
+  let d; try { d = JSON.parse(ham); } catch { return; }
+  const sn = d && d.endpoint && d.endpoint.serial_number, pl = d && d.payload; if (!sn || !pl || typeof pl !== 'object') return;
+  const anahtarlar = Object.keys(pl);
+  OLAYLAR.push(`${new Date().toISOString().slice(11, 19)} ${ad} ${sn} [${anahtarlar.join(',')}]`); if (OLAYLAR.length > 30) OLAYLAR.shift();
+  const h = hareketOku(pl);
+  const an = ANLIK[sn] = Object.assign(ANLIK[sn] || { k: [] }, { t: Date.now() });
+  an.k = Array.from(new Set(an.k.concat(anahtarlar)));
+  if (h !== null) {
+    an.v = h; an.vt = Date.now();
+    if (h === true && sonOnceki[sn] !== true) { SON[sn] = Date.now(); try { fs.mkdirSync('/data', { recursive: true }); fs.writeFileSync(HAREKET_DOSYA, JSON.stringify(SON)); } catch { } }
+    sonOnceki[sn] = h;
+    console.log('Hareket olayı', sn, h);
+  }
+}
+let sseCalisiyor = false;
+async function sseBaslat() {
+  if (sseCalisiyor || !cubeToken || !CUBE) return; sseCalisiyor = true;
+  try {
+    const r = await fetch(CUBE + '/open-api/v1/sse/bridge?access_token=' + encodeURIComponent(cubeToken), { headers: { Accept: 'text/event-stream' } });
+    if (!r.ok || !r.body) throw new Error('SSE ' + r.status);
+    console.log('iHost olay akışı açık');
+    const dec = new TextDecoder(); let tampon = '', ad = '', veri = [];
+    for await (const parca of r.body) {
+      tampon += dec.decode(parca, { stream: true });
+      let i; while ((i = tampon.indexOf('\n')) >= 0) {
+        const sat = tampon.slice(0, i).replace(/\r$/, ''); tampon = tampon.slice(i + 1);
+        if (sat === '') { if (veri.length) olayIsle(ad || 'mesaj', veri.join('\n')); ad = ''; veri = []; }
+        else if (sat.startsWith('event:')) ad = sat.slice(6).trim();
+        else if (sat.startsWith('data:')) veri.push(sat.slice(5).trim());
+      }
+    }
+  } catch (e) { console.log('iHost olay akışı koptu:', e.message); }
+  sseCalisiyor = false;
+}
+setInterval(sseBaslat, 10000); setTimeout(sseBaslat, 2000);
 setInterval(() => { if (cubeToken) cubeListe().catch(() => { }); }, 8000);
 
 // ---- Meross: bulut hesabıyla bir kez giriş (anahtar + cihaz listesi), sonra ev ağında yerel HTTP ile kontrol.
