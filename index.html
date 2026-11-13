@@ -1682,9 +1682,8 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
   const hint=document.querySelector('.hint');if(hint){const vv=document.getElementById('ver');hint.textContent='Tek parmak: kaydır · İki parmak: yakınlaş · Boş yere çift dokun: sıfırla · Balon: aç / kapa · Oda balonu: ışıkları ayır · ';if(vv)hint.appendChild(vv)}
   /* ---- Liste modu ---- */
   const view=document.getElementById('view-kontrol'),wrap=view.querySelector('.stage-wrap');
-  const mode=mk('div','ph-md','<button data-m="3d" aria-pressed="true">3B</button><button data-m="ls" aria-pressed="false">Liste</button>');view.insertBefore(mode,view.firstChild);
-  const LP=mk('div','ph-ls');LP.hidden=true;view.appendChild(LP);
-  let LM=false,lastLocal=0,busy=false,rt=null;
+  const LP=mk('div','ph-ls');view.appendChild(LP);
+  let LM=true,lastLocal=0,busy=false,rt=null;
   const NOTOG=/^(sensor|camera|climate)$/,TOG=a=>!NOTOG.test(a.kind);
   const accAll=()=>Object.values(ACC).filter(a=>accF(a)&&KINDS[a.kind]).sort((a,b)=>(KINDS[b.kind].light?1:0)-(KINDS[a.kind].light?1:0)||String(a.name).localeCompare(String(b.name),'tr'));
   const accOf=k=>accAll().filter(a=>k==='_'?!ROOMS[a.room]:a.room===k);
@@ -1701,11 +1700,8 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
     if(k==='climate')return `<svg viewBox="0 0 64 64"><circle cx="32" cy="34" r="19" fill="#eef0f8"/><circle cx="32" cy="34" r="13" fill="#2a3160"/><text x="32" y="39" text-anchor="middle" font-size="13" font-weight="700" fill="${on?'#ff8a5b':'#36d39a'}">°</text></svg>`;
     if(k==='camera')return `<svg viewBox="0 0 64 64"><rect x="29" y="4" width="6" height="14" fill="#c7ccdf"/><circle cx="32" cy="30" r="15" fill="#eef0f8"/><circle cx="36" cy="32" r="7" fill="#2a3160"/><circle cx="38" cy="30" r="2" fill="#4fc3ff"/></svg>`;
     return `<svg viewBox="0 0 64 64">${GR}<circle cx="32" cy="26" r="17" fill="${g}" stroke="${on?'#ffe6a8':'#8e97c9'}"/><rect x="24" y="40" width="16" height="6" rx="2" fill="#aeb4c8"/><rect x="26" y="46" width="12" height="7" rx="2" fill="#8f96ad"/></svg>`};
-  const stTxt=(a,on)=>NOTOG.test(a.kind)?(a.kind==='camera'?'Canlı görüntü':a.kind==='climate'?'3B’de aç':'veri yok'):on?'Açık':'Kapalı';
+  const stTxt=(a,on)=>NOTOG.test(a.kind)?(a.kind==='camera'?'Canlı görüntü':a.kind==='climate'?'Termostat':'veri yok'):on?'Açık':'Kapalı';
   function refreshCounts(){LP.querySelectorAll('.ph-rh small[data-k]').forEach(x=>{const T2=accOf(x.dataset.k).filter(TOG),n=T2.filter(a=>a.on).length;x.textContent=T2.length?n+' / '+T2.length+' açık':''})}
-  function setMode(ls,save){LM=ls;wrap.style.display=ls?'none':'';LP.hidden=!ls;mode.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String((x.dataset.m==='ls')===ls)));
-    if(save!==false)try{localStorage.setItem('aksongur-mod',ls?'ls':'3d')}catch(e){}
-    if(ls)renderList();else{if(T&&T.kick)T.kick();sig=''}}
   function buildGrid(A){const gt=mk('div','ph-tg');
     A.forEach(a=>{const t=TOG(a),c=KINDS[a.kind].c;let cur=a.dim&&a.bri!=null?a.bri:100;
       const b=mk('button','ph-tile'+(a.on&&t?' on':''),`<div class="bg"></div><div class="obj">${OBJ(a.kind,!!a.on&&t)}</div><b class="pc"></b><span class="nm"></span><small class="st"></small>`);
@@ -1717,7 +1713,7 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
       b.addEventListener('pointermove',e=>{if(sx==null||!t||!a.dim||!a.on)return;if(Math.abs(e.clientX-sx)>10)mv=true;if(mv){const r=b.getBoundingClientRect();cur=Math.max(5,Math.min(100,Math.round((e.clientX-r.left)/r.width*20)*5));paint()}});
       b.addEventListener('pointerup',()=>{if(sx==null)return;const was=mv;sx=null;busy=false;lastLocal=Date.now();
         if(was){patchAcc(a.id,{bri:cur});return}
-        if(!t){if(a.kind==='camera'){setMode(false);setTimeout(()=>openCam(a.id),150)}else if(a.kind==='climate'){setMode(false);toast('Termostat 3B görünümünde ayarlanır')}else toast((a.name||'')+': henüz veri yok');return}
+        if(!t){if(a.kind==='camera')openCam(a.id);else if(a.kind==='climate')toast('Termostat ayarlardan yönetilir');else toast((a.name||'')+': henüz veri yok');return}
         const now=!a.on;patchAcc(a.id,{on:now});b.classList.remove('fx');void b.offsetWidth;b.classList.add('fx');paint();refreshCounts()});
       b.addEventListener('pointercancel',()=>{sx=null;busy=false});
       gt.appendChild(b)});return gt}
@@ -1731,9 +1727,8 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
       sec.append(hd,buildGrid(A));LP.appendChild(sec)});
     refreshCounts();window.scrollTo(0,st)}
   window.__lsRefresh=()=>{clearTimeout(rt);rt=setTimeout(()=>{if(LM&&!busy&&Date.now()-lastLocal>800)renderList()},300)};
-  mode.onclick=e=>{const b=e.target.closest('button');if(b)setMode(b.dataset.m==='ls')};
   document.querySelectorAll('[data-floor]').forEach(b=>b.addEventListener('click',()=>setTimeout(()=>{if(LM)renderList()},0)));
-  try{if(localStorage.getItem('aksongur-mod')==='ls')setMode(true,false)}catch(e){}
+  renderList();
   }
   set(on,true);
 })();

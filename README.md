@@ -27,5 +27,5 @@ Sürüm: 2.5
 Yalnızca telefonda (dokunmatik + kısa kenar <600px) otomatik açılır; tablet/masaüstü aynen kalır. `?mod=tel` zorlar, `?mod=klasik` kapatır.
 - Kuşbakışı eşyalı 3B plan, döndürme yok; dikeyde evin uzun kenarı dikey, yatayda yatay.
 - Balonlar evin dışında, çizgiyle aksesuara bağlı; yalnızca ekranda görünen aksesuarlar. Oda balonuna dokun → ayrışır.
-- "Balonları düzenle": sürükle, yer kalıcı (`aksongur-balon-yer`). "3B | Liste" anahtarı (`aksongur-mod`): odalar altında kare aksesuar kutuları, kaydırarak parlaklık.
+- "Balonları düzenle": sürükle, yer kalıcı (`aksongur-balon-yer`). "3B | Liste" anahtarı (`aksongur-mod` (artık kullanılmıyor)): odalar altında kare aksesuar kutuları, kaydırarak parlaklık.
 - Eski anahtarlar (`aksongur-aksesuarlar`, `aksongur-ihost`, `aksongur-kamera-v3`, `aksongur-kat`, `balonMod`) değişmedi.
