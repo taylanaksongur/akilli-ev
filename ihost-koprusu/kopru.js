@@ -327,7 +327,7 @@ let LGC = null, LGS = { guc: null, ses: null, sessiz: null, istem: false, hata: 
 function lgBaslat() {
   if (!LG.ip || LGC) return;
   let LGTV; try { LGTV = require('lgtv2'); LGTV = LGTV.default || LGTV; } catch (e) { LGS.hata = 'lgtv2 paketi yüklenemedi (Node 20.19+ gerekir)'; console.log(LGS.hata, e.message); return; }
-  LGC = new LGTV({ host: LG.ip, keyFile: process.env.LG_ANAHTAR || '/data/lg-key', reconnect: 5000 });
+  LGC = new LGTV(Object.assign({ host: LG.ip, keyFile: process.env.LG_ANAHTAR || '/data/lg-key', reconnect: 5000 }, LG.mac ? { mac: LG.mac } : {}));
   LGC.on('prompt', () => { LGS.istem = true; });
   LGC.on('error', e => { LGS.hata = String(e && e.message || e).slice(0, 120); });
   LGC.on('close', () => { LGS.guc = null; });
@@ -404,7 +404,9 @@ http.createServer(async (req, res) => {
       const b = await govdeOku(req), ip = String(b.ip || '').trim();
       if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) return yanit(res, 400, { hata: 'Geçerli bir IP adresi yaz (ör. 192.168.68.50)' });
       if (LGC) { try { LGC.disconnect(); } catch { } LGC = null; }
-      LG = { ip, ad: String(b.ad || 'LG TV').slice(0, 40) }; LGS = { guc: null, ses: null, sessiz: null, istem: false, hata: '' };
+      const mac = String(b.mac || '').trim();
+      if (mac && !/^([0-9a-f]{2}[:-]?){5}[0-9a-f]{2}$/i.test(mac)) return yanit(res, 400, { hata: 'MAC adresi 90:7A:BE:6F:71:C8 biçiminde olmalı' });
+      LG = { ip, ad: String(b.ad || 'LG TV').slice(0, 40) }; if (mac) LG.mac = mac.replace(/[^0-9a-f]/gi, '').replace(/(..)(?=.)/g, '$1:'); LGS = { guc: null, ses: null, sessiz: null, istem: false, hata: '' };
       try { fs.mkdirSync('/data', { recursive: true }); fs.writeFileSync(LG_DOSYA, JSON.stringify(LG)); } catch { }
       lgBaslat();
       return yanit(res, 200, { ok: true });
