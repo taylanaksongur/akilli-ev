@@ -1650,7 +1650,7 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
       if(L.every(p=>Math.hypot(p.x-cx,p.y-cy)<48)&&!BAL.exp.has(r)&&!(T.getZoom&&T.getZoom()<0.62)){P=P.filter(p=>!L.includes(p));P.push({id:'room:'+r,ids:L.map(p=>p.id),room:r,x:cx,y:cy})}}
     P.sort((a,b)=>a.id<b.id?-1:1);
     Object.values(groups).forEach(g=>busy.push({x:g.x/g.n,y:g.y/g.n,w:14,h:14}));
-    const DIR=[[-1,-1],[1,-1],[-1,0],[1,0],[0,-1],[-1,1],[1,1],[0,1]],DIST=[44,70,100];
+    const DIR=[[-1,-1],[1,-1],[-1,0],[1,0],[0,-1],[-1,1],[1,1],[0,1]],DIST=[40,58,80,108];
     const placed=[],seen={},over=[];let d='',dOn='';
     const fits=(x,y,wl)=>{const L=x-Math.max(26,wl/2),R=x+Math.max(26,wl/2),Tp=y-26,B=y+40;
       if(L<4||R>W-4||Tp<4||B>H-4)return false;
@@ -1671,7 +1671,7 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
       if(got.c)pos[p.id]=got.c;seen[p.id]=1;const L=got.x-Math.max(26,wl/2),R=got.x+Math.max(26,wl/2);placed.push({L,R,T:got.y-26,B:got.y+40});
       const m=mark(p.id);paint(m,o);m.fn=grp?()=>{BAL.exp.add(p.room);sig='';toast(a.name+': ışıklar ayrıldı. Boş yere dokununca toplanır')}:(isInfo(a0)?ev=>info(a0,ev):null);
       const dx=got.x-p.x,dy=got.y-p.y,len=Math.hypot(dx,dy)||1,ex=got.x-dx/len*23,ey=got.y-dy/len*23;
-      const seg=`M${p.x.toFixed(1)},${p.y.toFixed(1)}L${ex.toFixed(1)},${ey.toFixed(1)}`;if(a.on)dOn+=seg;else d+=seg;
+      const seg=`M${p.x.toFixed(1)},${p.y.toFixed(1)}L${ex.toFixed(1)},${ey.toFixed(1)}`;/* kılavuz çizgisi yok: balon aksesuarın hemen yanında */
       m.b.style.left=got.x+'px';m.b.style.top=got.y+'px';m.l.style.left=got.x+'px';m.l.style.top=(got.y+24)+'px';m.b.classList.toggle('edt',EDIT);m.b.dataset.id=p.id});
     for(const id in marks)if(!seen[id]){marks[id].b.remove();marks[id].l.remove();delete marks[id]}
     const ord=Object.keys(marks).sort((x,y)=>{const a=marks[x].b,b=marks[y].b;return(parseFloat(a.style.top)-parseFloat(b.style.top))||(parseFloat(a.style.left)-parseFloat(b.style.left))});
@@ -1701,11 +1701,11 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
       if(!(T.getZoom&&T.getZoom()<0.62)&&!BAL.exp.has(r)){P=P.filter(p=>!L.includes(p));P.push({id:'room:'+r,ids:L.map(p=>p.id),room:r,x:cx,y:cy})}}
     P.sort((a,b)=>a.id<b.id?-1:1);
     Object.values(groups).forEach(g=>busy.push({x:g.x/g.n,y:g.y/g.n,w:14,h:14}));
-    const DIR=[[-1,-1],[1,-1],[-1,0],[1,0],[0,-1],[-1,1],[1,1],[0,1]],DIST=[44,70,100];
+    const DIR=[[-1,-1],[1,-1],[-1,0],[1,0],[0,-1],[-1,1],[1,1],[0,1]],DIST=[40,58,80,108];
     const placed=[],seen={},over=[];let d='',dOn='';
     const hb=houseBox(),cn=[[hb.x0,hb.y0],[hb.x1,hb.y0],[hb.x1,hb.y1],[hb.x0,hb.y1]].map(q=>{v.set(X(q[0]),0.05,Z(q[1]));v.project(cam);return{x:(v.x+1)/2*W,y:(1-v.y)/2*H}});
     const HR={l:Math.min(...cn.map(q=>q.x)),r:Math.max(...cn.map(q=>q.x)),t:Math.min(...cn.map(q=>q.y)),b:Math.max(...cn.map(q=>q.y))};
-    const OUT=HR.l>=0&&HR.r<=W&&HR.t>=0&&HR.b<=H;
+    const OUT=false;
     const fits=(x,y,wl)=>{const L=x-Math.max(26,wl/2),R=x+Math.max(26,wl/2),Tp=y-26,B=y+40;
       if(L<3||R>W-3||Tp<3||B>H-3)return false;
       if(OUT&&R>HR.l&&L<HR.r&&B>HR.t&&Tp<HR.b)return false;
@@ -1723,14 +1723,14 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
       if(cu){v.set(cu.x,0,cu.z);v.project(cam);const cx=(v.x+1)/2*W,cy=(1-v.y)/2*H;if(cx>30&&cx<W-30&&cy>30&&cy<H-44)got={x:cx,y:cy,c:null}}
       if(!got){const cand=[];const prev=pos[p.id];if(prev&&!!prev.o===OUT)cand.push(prev);
         if(OUT){[0,1,2,3].forEach(sd=>TS.forEach(t=>{const q=at(sd,t);cand.push({o:1,sd,t,d:Math.hypot(q.x-p.x,q.y-p.y)})}));cand.sort((u,w)=>(u.d||0)-(w.d||0))}
-        else{[44,70,100].forEach(r=>[-90,-45,0,45,90,135,180,-135].forEach(a=>cand.push({o:0,r,a})))}
+        else{[40,58,80,108].forEach(r=>[-90,-45,0,45,90,135,180,-135].forEach(a=>cand.push({o:0,r,a})))}
         const posC=c=>c.o?at(c.sd,c.t):{x:p.x+c.r*Math.cos(c.a*Math.PI/180),y:p.y+c.r*Math.sin(c.a*Math.PI/180)};
         for(const c of cand){const q=posC(c);if(fits(q.x,q.y,c.o&&c.sd>=2?Math.min(wl,64):wl)){got={x:q.x,y:q.y,c:c.o?{o:1,sd:c.sd,t:c.t}:{o:0,r:c.r,a:c.a}};break}}}
       if(!got){over.push(...p.ids);delete pos[p.id];return}
       if(got.c)pos[p.id]=got.c;seen[p.id]=1;const L=got.x-Math.max(26,wl/2),R=got.x+Math.max(26,wl/2);placed.push({L,R,T:got.y-26,B:got.y+40});
       const m=mark(p.id);paint(m,o);m.fn=grp?()=>{BAL.exp.add(p.room);sig='';toast(a.name+': ışıklar ayrıldı. Boş yere dokununca toplanır')}:(isInfo(a0)?ev=>info(a0,ev):null);
       const dx=got.x-p.x,dy=got.y-p.y,len=Math.hypot(dx,dy)||1,ex=got.x-dx/len*23,ey=got.y-dy/len*23;
-      const seg=`M${p.x.toFixed(1)},${p.y.toFixed(1)}L${ex.toFixed(1)},${ey.toFixed(1)}`;if(a.on)dOn+=seg;else d+=seg;
+      const seg=`M${p.x.toFixed(1)},${p.y.toFixed(1)}L${ex.toFixed(1)},${ey.toFixed(1)}`;/* kılavuz çizgisi yok: balon aksesuarın hemen yanında */
       m.b.style.left=got.x+'px';m.b.style.top=got.y+'px';m.l.style.left=got.x+'px';m.l.style.top=(got.y+24)+'px';m.l.style.maxWidth='110px';m.b.classList.toggle('edt',EDIT);m.b.dataset.id=p.id});
     for(const id in marks)if(!seen[id]){marks[id].b.remove();marks[id].l.remove();delete marks[id]}
     const ord=Object.keys(marks).sort((x,y)=>{const a=marks[x].b,b=marks[y].b;return(parseFloat(a.style.top)-parseFloat(b.style.top))||(parseFloat(a.style.left)-parseFloat(b.style.left))});
