@@ -946,13 +946,16 @@ function init3D(){
   let theta=(PH&&innerHeight>innerWidth)?Math.PI/2:0,phi=PH?0.02:0.72,zoom=1,baseR=14;
   function fit(){const w=stage.clientWidth,h=stage.clientHeight;if(!w||!h)return;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false);
     const vf=camera.fov*Math.PI/360,hf=Math.atan(Math.tan(vf)*camera.aspect);
-    if(PH){const por=h>w;theta=por?Math.PI/2:0;phi=0.02;const hb=houseBox(true),sw=por?hb.hd:hb.hw,sh=por?hb.hw:hb.hd,mx=por?30:34,my=por?34:34;
+    if(PH){const por=innerHeight>innerWidth;theta=por?Math.PI/2:0;phi=0.02;const hb=houseBox(true),sw=por?hb.hd:hb.hw,sh=por?hb.hw:hb.hd,mx=por?30:34,my=por?34:34;
       {const ppu=(w-2*mx)/(2*sw),need=Math.round(2*sh*ppu+2*my),cap=Math.max(300,Math.round(innerHeight*(por?.86:.72)-(por?60:0))),hh=Math.max(260,Math.min(need,cap));
        if(Math.abs(hh-h)>3&&!stage.__ph){stage.__ph=1;stage.style.height=hh+'px';stage.style.minHeight='0';requestAnimationFrame(()=>{stage.__ph=0;fit()});return}}
       baseR=Math.max(sw/(Math.tan(hf)*Math.max(.3,(w-2*mx)/w)),sh/(Math.tan(vf)*Math.max(.3,(h-2*my)/h)))}
     else baseR=Math.max(camHW/Math.tan(hf),(camHD+1.2*Math.sin(phi))/Math.tan(vf))*1.02;needs=true}
   function placeCam(){const r=baseR*zoom;camera.position.set(target.x+r*Math.sin(phi)*Math.sin(theta),target.y+r*Math.cos(phi),target.z+r*Math.sin(phi)*Math.cos(theta));camera.lookAt(target)}
   new ResizeObserver(fit).observe(stage);fit();
+  /* Telefon döndürülünce sahne yüksekliği eski yönden kalmasın: sıfırla, yeni ölçüyle yeniden sığdır (iOS'ta ölçüler geç güncellenir) */
+  if(PH){let ot=0,ls=innerWidth>innerHeight;const yon=()=>{clearTimeout(ot);ot=setTimeout(()=>{const l=innerWidth>innerHeight;if(l===ls&&stage.style.height&&Math.abs(parseInt(stage.style.height)-stage.clientHeight)<4)return;ls=l;stage.style.height='';stage.__ph=0;fit();needs=true;BAL.kick&&BAL.kick()},180)};
+    addEventListener('resize',yon);addEventListener('orientationchange',yon)}
   /* sanal kamera: adres girilmemiş kameralar için 3B modelden örnek görüntü */
   const vcam=new THREE.PerspectiveCamera(68,16/9,0.05,100);
   T.camShot=(a,cv)=>{const P=a.pts[0],x=X(P[0]),z=Z(P[1]),L=LABELS[a.room];let dx=1,dz=0;
