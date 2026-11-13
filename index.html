@@ -557,7 +557,7 @@ let lastSig='';
 function sig(){return FLOOR+JSON.stringify(Object.values(ACC).map(a=>[a.id,a.kind,a.pts,a.h,a.room,!!a.loop]).sort())}
 function afterChange(){if(Object.keys(ACC).length&&store!=='loading'){const m=$('#stageMsg');if(m&&/Henüz/.test(m.textContent))m.textContent=''}const s=sig();if(s!==lastSig){lastSig=s;rebuildAcc()}update3D();renderSettings();window.__lsRefresh&&window.__lsRefresh()}
 
-function houseBox(){let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const k in ROOMS){if(k==='bahce')continue;polyPts(ROOMS[k].poly).forEach(p=>{x0=Math.min(x0,p[0]);y0=Math.min(y0,p[1]);x1=Math.max(x1,p[0]);y1=Math.max(y1,p[1])})}
+function houseBox(all){let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const k in ROOMS){if(k==='bahce'&&!all)continue;polyPts(ROOMS[k].poly).forEach(p=>{x0=Math.min(x0,p[0]);y0=Math.min(y0,p[1]);x1=Math.max(x1,p[0]);y1=Math.max(y1,p[1])})}
   x0-=14;y0-=14;x1+=14;y1+=14;return{x0,y0,x1,y1,hw:(x1-x0)/2*S,hd:(y1-y0)/2*S,cx:X((x0+x1)/2),cz:Z((y0+y1)/2)}}
 async function initStore(){
   const msg=$('#stageMsg');msg.textContent='Aksesuarlar yükleniyor…';
@@ -934,7 +934,7 @@ function init3D(){
   let theta=(PH&&innerHeight>innerWidth)?Math.PI/2:0,phi=PH?0.02:0.72,zoom=1,baseR=14;
   function fit(){const w=stage.clientWidth,h=stage.clientHeight;if(!w||!h)return;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false);
     const vf=camera.fov*Math.PI/360,hf=Math.atan(Math.tan(vf)*camera.aspect);
-    if(PH){const por=h>w;theta=por?Math.PI/2:0;phi=0.02;const hb=houseBox(),sw=por?hb.hd:hb.hw,sh=por?hb.hw:hb.hd,mx=por?64:66,my=por?74:66;
+    if(PH){const por=h>w;theta=por?Math.PI/2:0;phi=0.02;const hb=houseBox(true),sw=por?hb.hd:hb.hw,sh=por?hb.hw:hb.hd,mx=por?30:34,my=por?34:34;
       {const ppu=(w-2*mx)/(2*sw),need=Math.round(2*sh*ppu+2*my),cap=Math.max(300,Math.round(innerHeight*(por?.86:.72)-(por?60:0))),hh=Math.max(260,Math.min(need,cap));
        if(Math.abs(hh-h)>3&&!stage.__ph){stage.__ph=1;stage.style.height=hh+'px';stage.style.minHeight='0';requestAnimationFrame(()=>{stage.__ph=0;fit()});return}}
       baseR=Math.max(sw/(Math.tan(hf)*Math.max(.3,(w-2*mx)/w)),sh/(Math.tan(vf)*Math.max(.3,(h-2*my)/h)))}
@@ -966,14 +966,14 @@ function init3D(){
   T.flyStep=()=>{if(!fly)return false;const u=Math.min(1,(performance.now()-fly.t0)/650),e=u<.5?2*u*u:1-Math.pow(-2*u+2,2)/2,f=fly.f,t=fly.to;
     target.x=f.x+(t.x-f.x)*e;target.z=f.z+(t.z-f.z)*e;theta=f.th+(t.th-f.th)*e;phi=f.ph+(t.ph-f.ph)*e;zoom=f.zm+(t.zm-f.zm)*e;
     if(u>=1)fly=null;return true};
-  T.setFloor=n=>{for(const k in FG)FG[k].visible=+k===n;const c=FLS[n].cam;if(PH){const hb=houseBox();HOME.set(hb.cx,0.4,hb.cz)}else HOME.set(X(c[0]),0.4,Z(c[1]));camHW=c[2];camHD=c[3];target.copy(HOME);if(!PH){theta=0;phi=0.72}zoom=1;fit();needs=true};
+  T.setFloor=n=>{for(const k in FG)FG[k].visible=+k===n;const c=FLS[n].cam;if(PH){const hb=houseBox(true);HOME.set(hb.cx,0.4,hb.cz)}else HOME.set(X(c[0]),0.4,Z(c[1]));camHW=c[2];camHD=c[3];target.copy(HOME);if(!PH){theta=0;phi=0.72}zoom=1;fit();needs=true};
   const el=renderer.domElement;el.style.cssText='touch-action:none;display:block;width:100%;height:100%';
   const ptrs=new Map();let downAt=null,moved=0,pinch0=0,zoom0=1,mid=null,panMode=false,lastTap=0;
   /* kaydırma: ekrandaki piksel hareketini zemin düzleminde hedef noktasına çevirir */
   function pan(dx,dy){const k=2*baseR*zoom*Math.tan(camera.fov*Math.PI/360)/(stage.clientHeight||1);
     const rx=Math.cos(theta),rz=-Math.sin(theta),fx=-Math.sin(theta),fz=-Math.cos(theta),fy=k/Math.max(0.45,Math.cos(phi));
     target.x-=rx*dx*k-fx*dy*fy;target.z-=rz*dx*k-fz*dy*fy;
-    if(PH){const hb=houseBox(),M=70,W=(stage.clientWidth||1)/2,Hh=(stage.clientHeight||1)/2,
+    if(PH){const hb=houseBox(true),M=60,W=(stage.clientWidth||1)/2,Hh=(stage.clientHeight||1)/2,
       Hx=(Math.abs(rx)*hb.hw+Math.abs(rz)*hb.hd)/k,Hy=(Math.abs(fx)*hb.hw+Math.abs(fz)*hb.hd)/k,
       dx0=hb.cx-target.x,dz0=hb.cz-target.z;let ox=(dx0*rx+dz0*rz)/k,oy=(dx0*fx+dz0*fz)/k;
       const cl=(v,H,Wd)=>{const lim=H-(Wd-M);return lim<=0?0:Math.max(-lim,Math.min(lim,v))};ox=cl(ox,Hx,W);oy=cl(oy,Hy,Hh);
@@ -1650,7 +1650,7 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
       if(L.every(p=>Math.hypot(p.x-cx,p.y-cy)<48)&&!BAL.exp.has(r)&&!(T.getZoom&&T.getZoom()<0.62)){P=P.filter(p=>!L.includes(p));P.push({id:'room:'+r,ids:L.map(p=>p.id),room:r,x:cx,y:cy})}}
     P.sort((a,b)=>a.id<b.id?-1:1);
     Object.values(groups).forEach(g=>busy.push({x:g.x/g.n,y:g.y/g.n,w:14,h:14}));
-    const DIR=[[-1,-1],[1,-1],[-1,0],[1,0],[0,-1],[-1,1],[1,1],[0,1]],DIST=[40,58,80,108];
+    const DIR=[[-1,0],[1,0],[-1,-1],[1,-1],[-1,1],[1,1],[0,-1],[0,1]],DIST=[40,58,80,108];
     const placed=[],seen={},over=[];let d='',dOn='';
     const fits=(x,y,wl)=>{const L=x-Math.max(26,wl/2),R=x+Math.max(26,wl/2),Tp=y-26,B=y+40;
       if(L<4||R>W-4||Tp<4||B>H-4)return false;
@@ -1701,7 +1701,7 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
       if(!(T.getZoom&&T.getZoom()<0.62)&&!BAL.exp.has(r)){P=P.filter(p=>!L.includes(p));P.push({id:'room:'+r,ids:L.map(p=>p.id),room:r,x:cx,y:cy})}}
     P.sort((a,b)=>a.id<b.id?-1:1);
     Object.values(groups).forEach(g=>busy.push({x:g.x/g.n,y:g.y/g.n,w:14,h:14}));
-    const DIR=[[-1,-1],[1,-1],[-1,0],[1,0],[0,-1],[-1,1],[1,1],[0,1]],DIST=[40,58,80,108];
+    const DIR=[[-1,0],[1,0],[-1,-1],[1,-1],[-1,1],[1,1],[0,-1],[0,1]],DIST=[40,58,80,108];
     const placed=[],seen={},over=[];let d='',dOn='';
     const hb=houseBox(),cn=[[hb.x0,hb.y0],[hb.x1,hb.y0],[hb.x1,hb.y1],[hb.x0,hb.y1]].map(q=>{v.set(X(q[0]),0.05,Z(q[1]));v.project(cam);return{x:(v.x+1)/2*W,y:(1-v.y)/2*H}});
     const HR={l:Math.min(...cn.map(q=>q.x)),r:Math.max(...cn.map(q=>q.x)),t:Math.min(...cn.map(q=>q.y)),b:Math.max(...cn.map(q=>q.y))};
@@ -1723,7 +1723,7 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
       if(cu){v.set(cu.x,0,cu.z);v.project(cam);const cx=(v.x+1)/2*W,cy=(1-v.y)/2*H;if(cx>30&&cx<W-30&&cy>30&&cy<H-44)got={x:cx,y:cy,c:null}}
       if(!got){const cand=[];const prev=pos[p.id];if(prev&&!!prev.o===OUT)cand.push(prev);
         if(OUT){[0,1,2,3].forEach(sd=>TS.forEach(t=>{const q=at(sd,t);cand.push({o:1,sd,t,d:Math.hypot(q.x-p.x,q.y-p.y)})}));cand.sort((u,w)=>(u.d||0)-(w.d||0))}
-        else{[40,58,80,108].forEach(r=>[-90,-45,0,45,90,135,180,-135].forEach(a=>cand.push({o:0,r,a})))}
+        else{[40,58,80,108].forEach(r=>[0,180,-45,-135,45,135,-90,90].forEach(a=>cand.push({o:0,r,a})))}
         const posC=c=>c.o?at(c.sd,c.t):{x:p.x+c.r*Math.cos(c.a*Math.PI/180),y:p.y+c.r*Math.sin(c.a*Math.PI/180)};
         for(const c of cand){const q=posC(c);if(fits(q.x,q.y,c.o&&c.sd>=2?Math.min(wl,64):wl)){got={x:q.x,y:q.y,c:c.o?{o:1,sd:c.sd,t:c.t}:{o:0,r:c.r,a:c.a}};break}}}
       if(!got){over.push(...p.ids);delete pos[p.id];return}
