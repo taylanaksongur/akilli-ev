@@ -924,7 +924,11 @@ function init3D(){
   function pan(dx,dy){const k=2*baseR*zoom*Math.tan(camera.fov*Math.PI/360)/(stage.clientHeight||1);
     const rx=Math.cos(theta),rz=-Math.sin(theta),fx=-Math.sin(theta),fz=-Math.cos(theta),fy=k/Math.max(0.45,Math.cos(phi));
     target.x-=rx*dx*k-fx*dy*fy;target.z-=rz*dx*k-fz*dy*fy;
-    if(PH){const hb=houseBox();target.x=Math.max(hb.cx-hb.hw,Math.min(hb.cx+hb.hw,target.x));target.z=Math.max(hb.cz-hb.hd,Math.min(hb.cz+hb.hd,target.z))}else{target.x=Math.max(X(VB[0]),Math.min(X(VB[0]+VB[2]-20),target.x));target.z=Math.max(Z(40),Math.min(Z(1190),target.z))};needs=true}
+    if(PH){const hb=houseBox(),M=70,W=(stage.clientWidth||1)/2,Hh=(stage.clientHeight||1)/2,
+      Hx=(Math.abs(rx)*hb.hw+Math.abs(rz)*hb.hd)/k,Hy=(Math.abs(fx)*hb.hw+Math.abs(fz)*hb.hd)/k,
+      dx0=hb.cx-target.x,dz0=hb.cz-target.z;let ox=(dx0*rx+dz0*rz)/k,oy=(dx0*fx+dz0*fz)/k;
+      const cl=(v,H,Wd)=>{const lim=H-(Wd-M);return lim<=0?0:Math.max(-lim,Math.min(lim,v))};ox=cl(ox,Hx,W);oy=cl(oy,Hy,Hh);
+      target.x=hb.cx-(ox*k*rx+oy*k*fx);target.z=hb.cz-(ox*k*rz+oy*k*fz)}else{target.x=Math.max(X(VB[0]),Math.min(X(VB[0]+VB[2]-20),target.x));target.z=Math.max(Z(40),Math.min(Z(1190),target.z))};needs=true}
   const midOf=()=>{const[a,b]=[...ptrs.values()];return{x:(a.x+b.x)/2,y:(a.y+b.y)/2,d:Math.hypot(a.x-b.x,a.y-b.y)||1}};
   el.addEventListener('contextmenu',e=>e.preventDefault());
   el.addEventListener('pointerdown',e=>{fly=null;el.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});downAt={x:e.clientX,y:e.clientY};moved=0;closePop();
