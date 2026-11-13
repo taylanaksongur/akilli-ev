@@ -66,8 +66,14 @@ function sadele(c) {
   const adlar = (c.tags && c.tags.toggle) || {};
   /* Hareket/varlık sensörleri: iHost 2.x 'motion', eski sürümler 'detect', varlık sensörleri 'presence' bildirir */
   const hv = s.motion ? s.motion.motion : s.detect ? s.detect.detected : s.presence ? (s.presence.presence !== undefined ? s.presence.presence : s.presence.detected) : undefined;
+  let hv2 = hv;
+  if (hv2 === undefined) {   /* bilinen ad yoksa: güç/ışık dışındaki ilk mantıksal (açık/kapalı) durum */
+    const atla = /^(power|toggle|brightness|color|temperature|humidity|battery|rssi|online|identify|startup|illumination|signal|firmware)/i;
+    for (const k of Object.keys(s)) { if (atla.test(k) || !s[k] || typeof s[k] !== 'object') continue;
+      const b = Object.values(s[k]).find(v => typeof v === 'boolean'); if (b !== undefined) { hv2 = b; break; } }
+  }
   const sens = {
-    hareket: typeof hv === 'boolean' ? hv : typeof hv === 'string' ? /^(true|on|detected|occupied|presence)$/i.test(hv) : null,
+    hareket: typeof hv2 === 'boolean' ? hv2 : typeof hv2 === 'string' ? /^(true|on|detected|occupied|presence)$/i.test(hv2) : null,
     sicaklik: s.temperature && typeof s.temperature.temperature === 'number' ? s.temperature.temperature : null,
     nem: s.humidity && typeof s.humidity.humidity === 'number' ? s.humidity.humidity : null,
     yetenekler: Object.keys(s),
