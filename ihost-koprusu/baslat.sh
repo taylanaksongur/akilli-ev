@@ -22,6 +22,8 @@ else
 fi
 # Meross bulut bağlantısı için mqtt paketi (bir kez, /data'ya)
 mkdir -p /data && cd /data && { [ -d node_modules/mqtt ] || npm i --no-audit --no-fund --silent mqtt@5 >/dev/null 2>&1 || echo "mqtt kurulamadı"; }
+# LG webOS TV kontrolü için lgtv2 (bir kez, /data'ya)
+{ [ -d node_modules/lgtv2 ] || npm i --no-audit --no-fund --silent lgtv2 >/dev/null 2>&1 || echo "lgtv2 kurulamadı"; }
 cd /
 export NODE_PATH=/data/node_modules
 exec node /k.js
