@@ -64,12 +64,20 @@ function sadele(c) {
   const s = c.state || {};
   const kanallar = s.toggle ? Object.keys(s.toggle).sort((a, b) => a - b) : [];
   const adlar = (c.tags && c.tags.toggle) || {};
-  const ortak = {
+  /* Hareket/varlık sensörleri: iHost 2.x 'motion', eski sürümler 'detect', varlık sensörleri 'presence' bildirir */
+  const hv = s.motion ? s.motion.motion : s.detect ? s.detect.detected : s.presence ? (s.presence.presence !== undefined ? s.presence.presence : s.presence.detected) : undefined;
+  const sens = {
+    hareket: typeof hv === 'boolean' ? hv : typeof hv === 'string' ? /^(true|on|detected|occupied|presence)$/i.test(hv) : null,
+    sicaklik: s.temperature && typeof s.temperature.temperature === 'number' ? s.temperature.temperature : null,
+    nem: s.humidity && typeof s.humidity.humidity === 'number' ? s.humidity.humidity : null,
+    yetenekler: Object.keys(s),
+  };
+  const ortak = Object.assign(sens, {
     tur: c.display_category,
     cevrimici: c.online !== false,
     parlaklik: s.brightness ? s.brightness.brightness : null,
     dimmer: (c.capabilities || []).some(x => x.capability === 'brightness'),
-  };
+  });
   const ad = c.name || (c.manufacturer + ' ' + c.model);
   if (kanallar.length > 1) return kanallar.map(k => Object.assign({}, ortak, {
     id: c.serial_number + ':' + k,
