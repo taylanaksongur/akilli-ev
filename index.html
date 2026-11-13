@@ -254,7 +254,9 @@ input[type=text],input[type=number],select{width:100%;background:var(--panel-2);
 @media (max-width:680px){.wx{overflow:hidden}.wx-ico{display:none}}
 
 html.ph,html.ph body{max-width:100vw;overflow-x:hidden}html.ph .app>*,html.ph .view,html.ph .stage-wrap{min-width:0;max-width:100%}
-html.ph .room-views{display:none}html.ph #view-kontrol{padding-bottom:16px}html.ph .stage-wrap{padding-top:0}html.ph #thermo{display:none}html.ph #roomsOv{display:none}
+html.ph .room-views{display:none}html.ph #view-kontrol{padding-bottom:16px}html.ph .stage-wrap{padding-top:0}html.ph #thermo{display:none}html.ph .floors button[aria-pressed=true]::after{content:"▾";margin-left:6px;opacity:.85}
+.ph-menu{position:fixed;z-index:70;display:flex;gap:4px;padding:4px;background:#141a3df2;border:1px solid #2a3260;border-radius:14px;box-shadow:0 10px 30px #000b;backdrop-filter:blur(8px)}.ph-menu[hidden]{display:none}
+.ph-menu button{flex:1;min-height:48px;font-size:15px;font-weight:600;color:#aab2dd;background:none;border:0;border-radius:10px}.ph-menu button[aria-pressed=true]{background:#2c3a8c;color:#fff}html.ph #roomsOv{display:none}
 html.ph .hint{font-size:12px}
 @media (orientation:landscape){html.ph .app{gap:8px}html.ph .stage{height:calc(100dvh - 104px);min-height:250px}html.ph .room-views{display:none}}
 @media (orientation:portrait){html.ph .stage{height:min(80dvh,900px)}}
@@ -1682,8 +1684,8 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
   const hint=document.querySelector('.hint');if(hint){const vv=document.getElementById('ver');hint.textContent='Tek parmak: kaydır · İki parmak: yakınlaş · Boş yere çift dokun: sıfırla · Balon: aç / kapa · Oda balonu: ışıkları ayır · ';if(vv)hint.appendChild(vv)}
   /* ---- Liste modu ---- */
   const view=document.getElementById('view-kontrol'),wrap=view.querySelector('.stage-wrap');
-  const LP=mk('div','ph-ls');view.appendChild(LP);
-  let LM=true,lastLocal=0,busy=false,rt=null;
+  const LP=mk('div','ph-ls');LP.hidden=true;view.appendChild(LP);
+  let LM=false,lastLocal=0,busy=false,rt=null;
   const NOTOG=/^(sensor|camera|climate)$/,TOG=a=>!NOTOG.test(a.kind);
   const accAll=()=>Object.values(ACC).filter(a=>accF(a)&&KINDS[a.kind]).sort((a,b)=>(KINDS[b.kind].light?1:0)-(KINDS[a.kind].light?1:0)||String(a.name).localeCompare(String(b.name),'tr'));
   const accOf=k=>accAll().filter(a=>k==='_'?!ROOMS[a.room]:a.room===k);
@@ -1702,6 +1704,9 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
     return `<svg viewBox="0 0 64 64">${GR}<circle cx="32" cy="26" r="17" fill="${g}" stroke="${on?'#ffe6a8':'#8e97c9'}"/><rect x="24" y="40" width="16" height="6" rx="2" fill="#aeb4c8"/><rect x="26" y="46" width="12" height="7" rx="2" fill="#8f96ad"/></svg>`};
   const stTxt=(a,on)=>NOTOG.test(a.kind)?(a.kind==='camera'?'Canlı görüntü':a.kind==='climate'?'Termostat':'veri yok'):on?'Açık':'Kapalı';
   function refreshCounts(){LP.querySelectorAll('.ph-rh small[data-k]').forEach(x=>{const T2=accOf(x.dataset.k).filter(TOG),n=T2.filter(a=>a.on).length;x.textContent=T2.length?n+' / '+T2.length+' açık':''})}
+  function setMode(ls,save){LM=ls;wrap.style.display=ls?'none':'';LP.hidden=!ls;
+    if(save!==false)try{localStorage.setItem('aksongur-mod',ls?'ls':'3d')}catch(e){}
+    if(ls)renderList();else{if(T&&T.kick)T.kick();sig=''}}
   function buildGrid(A){const gt=mk('div','ph-tg');
     A.forEach(a=>{const t=TOG(a),c=KINDS[a.kind].c;let cur=a.dim&&a.bri!=null?a.bri:100;
       const b=mk('button','ph-tile'+(a.on&&t?' on':''),`<div class="bg"></div><div class="obj">${OBJ(a.kind,!!a.on&&t)}</div><b class="pc"></b><span class="nm"></span><small class="st"></small>`);
@@ -1713,7 +1718,7 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
       b.addEventListener('pointermove',e=>{if(sx==null||!t||!a.dim||!a.on)return;if(Math.abs(e.clientX-sx)>10)mv=true;if(mv){const r=b.getBoundingClientRect();cur=Math.max(5,Math.min(100,Math.round((e.clientX-r.left)/r.width*20)*5));paint()}});
       b.addEventListener('pointerup',()=>{if(sx==null)return;const was=mv;sx=null;busy=false;lastLocal=Date.now();
         if(was){patchAcc(a.id,{bri:cur});return}
-        if(!t){if(a.kind==='camera')openCam(a.id);else if(a.kind==='climate')toast('Termostat ayarlardan yönetilir');else toast((a.name||'')+': henüz veri yok');return}
+        if(!t){if(a.kind==='camera'){setMode(false);setTimeout(()=>openCam(a.id),150)}else if(a.kind==='climate')toast('Termostat ayarlardan yönetilir');else toast((a.name||'')+': henüz veri yok');return}
         const now=!a.on;patchAcc(a.id,{on:now});b.classList.remove('fx');void b.offsetWidth;b.classList.add('fx');paint();refreshCounts()});
       b.addEventListener('pointercancel',()=>{sx=null;busy=false});
       gt.appendChild(b)});return gt}
@@ -1728,7 +1733,14 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
     refreshCounts();window.scrollTo(0,st)}
   window.__lsRefresh=()=>{clearTimeout(rt);rt=setTimeout(()=>{if(LM&&!busy&&Date.now()-lastLocal>800)renderList()},300)};
   document.querySelectorAll('[data-floor]').forEach(b=>b.addEventListener('click',()=>setTimeout(()=>{if(LM)renderList()},0)));
-  renderList();
+  const fl=document.querySelector('.floors'),menu=mk('div','ph-menu','<button data-m="3d">3B plan</button><button data-m="ls">Liste</button>');menu.hidden=true;document.body.appendChild(menu);
+  const hideM=()=>{menu.hidden=true};
+  function showM(){const r=fl.getBoundingClientRect();menu.style.top=(r.bottom+6)+'px';menu.style.left=r.left+'px';menu.style.width=r.width+'px';menu.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String((x.dataset.m==='ls')===LM)));menu.hidden=false}
+  document.querySelectorAll('[data-floor]').forEach(b=>{b.addEventListener('pointerdown',()=>{b.__was=b.getAttribute('aria-pressed')==='true'},true);
+    b.addEventListener('click',()=>{if(b.__was){menu.hidden?showM():hideM()}else hideM();b.__was=false})});
+  menu.onclick=e=>{const b=e.target.closest('button');if(b){setMode(b.dataset.m==='ls');hideM()}};
+  document.addEventListener('pointerdown',e=>{if(!menu.hidden&&!menu.contains(e.target)&&!e.target.closest('.floors'))hideM()});
+  try{if(localStorage.getItem('aksongur-mod')==='ls')setMode(true,false)}catch(e){}
   }
   set(on,true);
 })();
