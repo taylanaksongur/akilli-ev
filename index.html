@@ -173,6 +173,7 @@ nav.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--
 .hint{text-align:center;color:var(--muted);font-size:11px;padding-top:8px}
 .stage-msg{position:absolute;inset:auto 0 16px;text-align:center;font-size:12px;color:var(--muted);pointer-events:none}
 .pop{position:absolute;z-index:5;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 12px;display:flex;align-items:center;gap:10px;box-shadow:0 12px 30px -10px #000}
+.pop.tv{display:block;min-width:210px}.pop.tv .tvm strong{display:block;text-align:left;font-size:16px}.pop.tv .tvm small{display:block;color:var(--muted,#aab2dd);margin:2px 0 8px}.pop.tv .tvm div{display:flex;gap:6px;flex-wrap:wrap}.pop.tv .tvm button{width:auto;min-width:64px;padding:0 10px;font-size:14px}
 .pop strong{font-family:var(--f-display);font-size:22px;font-variant-numeric:tabular-nums;min-width:66px;text-align:center}
 .pop button{width:34px;height:34px;border-radius:10px;background:var(--panel-2);font-size:18px}
 .pop small{display:block;color:var(--muted);font-size:11px;text-align:center}
@@ -545,6 +546,7 @@ const SRC=['iHost','Meross','Cosa','LG','Homebridge','Imou','Diğer'];const BRG=
 const hhmm=t=>{const d=new Date(t),b=new Date(),z=x=>String(x).padStart(2,'0'),h=z(d.getHours())+':'+z(d.getMinutes());
   return d.toDateString()===b.toDateString()?h:new Date(b-864e5).toDateString()===d.toDateString()?'dün '+h:z(d.getDate())+'.'+z(d.getMonth()+1)+' '+h};
 const sensTxt=a=>a.det===true?'Hareket var':a.sH?'Son hareket '+hhmm(a.sH):a.det===false?'Hareket yok':(a.extId&&BRG(a.src)?'Hareket bekleniyor':'Veri yok');
+const isTV=a=>!!a&&a.src==='LG'&&a.kind!=='sensor'&&a.kind!=='climate';
 const sensDet=a=>[sensTxt(a)+(a.det==null&&!a.sH&&a.extId&&BRG(a.src)?(a.cap?' (iHost bildirdiği: '+(a.cap.join(', ')||'hiçbir durum')+')':' (köprü güncel değil)'):'')].concat(typeof a.sT==='number'?[a.sT.toFixed(1).replace('.',',')+'°']:[],typeof a.sN==='number'?['%'+Math.round(a.sN)]:[]).join(' · ');
 const srcCls=s=>s==='iHost'?'ihost':s==='Meross'?'meross':s==='Cosa'?'cosa':s==='LG'?'lg':s==='Homebridge'?'hb':s==='Imou'?'imou':'ex';
 const GR='<defs><radialGradient id="phgb" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#fffbe8"/><stop offset="1" stop-color="#ffd27a"/></radialGradient><radialGradient id="phgz" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#eef1fb"/><stop offset="1" stop-color="#a9b1d1"/></radialGradient></defs>';
@@ -1123,8 +1125,15 @@ function update3D(){
 /* termostat açılır kutusu */
 let pop=null;
 function closePop(){if(pop){pop.remove();pop=null}}
+function tvKomut(a,g){if(!a||!a.extId)return;if('acik' in g)a.on=g.acik;if(g.sesDelta&&typeof a.ses==='number')a.ses=Math.max(0,Math.min(100,a.ses+g.sesDelta));if('sessiz' in g)a.sessiz=g.sessiz;
+  ihostIstek('/cihaz/'+encodeURIComponent(a.extId),g).catch(e=>errToast(a.name,e.message))}
+const tvHtml=a=>`<div class="tvm"><strong>${esc(a.name)}</strong><small>${a.on?'Açık':'Kapalı'}${typeof a.ses==='number'?' · Ses '+a.ses:''}${a.sessiz?' · Sessiz':''}</small><div><button data-t="acik:${a.on?0:1}">${a.on?'Kapat':'Aç'}</button><button data-t="sesDelta:-2" aria-label="Sesi azalt">Ses −</button><button data-t="sesDelta:2" aria-label="Sesi artır">Ses +</button><button data-t="sessiz:${a.sessiz?0:1}">${a.sessiz?'Sesi aç':'Sessiz'}</button></div></div>`;
+function tvTikla(a,b){const [k,v]=b.dataset.t.split(':'),g={};if(k==='sesDelta')g.sesDelta=+v;else if(k==='sessiz')g.sessiz=v==='1';else g.acik=v==='1';tvKomut(a,g)}
 function openPop(a,e){closePop();const wrap=$('.stage-wrap'),r=wrap.getBoundingClientRect();
   pop=document.createElement('div');pop.className='pop';
+  if(isTV(a)){pop.className='pop tv';const dr=()=>{pop.innerHTML=tvHtml(ACC[a.id])};dr();wrap.appendChild(pop);
+    const x=Math.min(Math.max(8,e.clientX-r.left-110),r.width-230),y=Math.max(8,e.clientY-r.top-100);pop.style.left=x+'px';pop.style.top=y+'px';
+    pop.addEventListener('click',ev=>{const b=ev.target.closest('button[data-t]');if(!b)return;tvTikla(ACC[a.id],b);setTimeout(dr,60)});return}
   const draw=()=>{const v=(ACC[a.id]?.setT??22);pop.innerHTML=`<button data-d="-0.5" aria-label="Azalt">−</button><div><strong>${v.toFixed(1).replace('.',',')}°</strong><small>${esc(a.name)}</small></div><button data-d="0.5" aria-label="Artır">+</button>`};
   draw();wrap.appendChild(pop);
   const x=Math.min(Math.max(8,e.clientX-r.left-90),r.width-200),y=Math.max(8,e.clientY-r.top-80);pop.style.left=x+'px';pop.style.top=y+'px';
@@ -1594,6 +1603,7 @@ function ihostDurumAl(){if(!IHLIST)return;let n=0;
       if(a.det!==d){a.det=d;n++}if(a.sH!==c.sonHareket){a.sH=c.sonHareket;n++}if(JSON.stringify(a.cap)!==JSON.stringify(c.yetenekler)){a.cap=c.yetenekler;n++}if(d!==null&&!!a.on!==d){a.on=d;n++}
       const t=typeof c.sicaklik==='number'?c.sicaklik:undefined,h=typeof c.nem==='number'?c.nem:undefined;
       if(a.sT!==t){a.sT=t;n++}if(a.sN!==h){a.sN=h;n++}return}
+    if(isTV(a)){if(typeof c.ses==='number'&&a.ses!==c.ses){a.ses=c.ses;n++}if(typeof c.sessiz==='boolean'&&a.sessiz!==c.sessiz){a.sessiz=c.sessiz;n++}}
     if(c.acik==null)return;
     if(!!a.on!==c.acik){a.on=c.acik;n++}if(a.dim&&c.parlaklik!=null&&a.bri!==c.parlaklik){a.bri=c.parlaklik;n++}});
   if(n){afterChange(false)}}
@@ -1663,8 +1673,8 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
     if(v&&!first)toast('Işıkları yanlarındaki yuvarlak düğmelerden aç/kapa');
     if(v&&!running){running=true;requestAnimationFrame(tick)}}
   btn.onclick=()=>set(!on);
-  const isInfo=a=>a.kind==='camera'||a.kind==='climate'||a.kind==='sensor';
-  const info=(a,ev)=>{if(a.kind==='camera')openCam(a.id);else if(BAL.sheet)BAL.sheet(a);else if(a.kind==='climate')openPop(a,ev);else toast(a.name+': '+(a.kind==='sensor'?sensDet(a):'henüz veri yok'))};
+  const isInfo=a=>a.kind==='camera'||a.kind==='climate'||a.kind==='sensor'||isTV(a);
+  const info=(a,ev)=>{if(a.kind==='camera')openCam(a.id);else if(BAL.sheet)BAL.sheet(a);else if(a.kind==='climate'||isTV(a))openPop(a,ev);else toast(a.name+': '+(a.kind==='sensor'?sensDet(a):'henüz veri yok'))};
   function mark(id){let m=marks[id];if(m)return m;
     const b=document.createElement('button');b.type='button';b.className='bal-m';
     const l=document.createElement('div');l.className='bal-l';l.setAttribute('aria-hidden','true');
@@ -1812,7 +1822,7 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
   const view=document.getElementById('view-kontrol'),wrap=view.querySelector('.stage-wrap');
   const LP=mk('div','ph-ls');LP.hidden=true;view.appendChild(LP);
   let LM=false,lastLocal=0,busy=false,rt=null;
-  const NOTOG=/^(sensor|camera|climate)$/,TOG=a=>!NOTOG.test(a.kind);
+  const NOTOG=/^(sensor|camera|climate)$/,TOG=a=>!NOTOG.test(a.kind)&&!isTV(a);
   const accAll=()=>Object.values(ACC).filter(a=>accF(a)&&KINDS[a.kind]).sort((a,b)=>(KINDS[b.kind].light?1:0)-(KINDS[a.kind].light?1:0)||String(a.name).localeCompare(String(b.name),'tr'));
   const FAVK='aksongur-fav',ORDK='aksongur-sira';let FAV=[],ORD={};
   try{FAV=JSON.parse(localStorage.getItem(FAVK)||'[]')}catch(e){}try{ORD=JSON.parse(localStorage.getItem(ORDK)||'{}')}catch(e){}
@@ -1821,7 +1831,7 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
     return accAll().filter(a=>k==='_'?!ROOMS[a.room]:a.room===k).sort((a,b)=>{const i=o.indexOf(a.id),j=o.indexOf(b.id);return (i<0?1e3:i)-(j<0?1e3:j)})}
   const roomKeys=()=>{const all=accAll(),ks=Object.keys(ROOMS).filter(k=>all.some(a=>a.room===k));if(all.some(a=>!ROOMS[a.room]))ks.push('_');return ks};
   const rn=k=>k==='_'?'Diğer':ROOMS[k].name;
-  const stTxt=(a,on)=>NOTOG.test(a.kind)?(a.kind==='camera'?'Canlı görüntü':a.kind==='climate'?'Termostat':sensTxt(a)):on?'Açık':'Kapalı';
+  const stTxt=(a,on)=>isTV(a)?(a.on?'Açık':'Kapalı')+(typeof a.ses==='number'?' · Ses '+a.ses:''):NOTOG.test(a.kind)?(a.kind==='camera'?'Canlı görüntü':a.kind==='climate'?'Termostat':sensTxt(a)):on?'Açık':'Kapalı';
   function refreshCounts(){LP.querySelectorAll('.ph-rh small[data-k]').forEach(x=>{const T2=accOf(x.dataset.k).filter(TOG),n=T2.filter(a=>a.on).length;x.textContent=T2.length?n+' / '+T2.length+' açık':''})}
   function setMode(ls,save){LM=ls;wrap.style.display=ls?'none':'';LP.hidden=!ls;
     if(save!==false)try{localStorage.setItem('aksongur-mod',ls?'ls':'3d')}catch(e){}
@@ -1841,7 +1851,7 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
         if(!t||!a.dim)return;if(Math.abs(e.clientX-sx)>10)mv=true;if(mv){const r=b.getBoundingClientRect();cur=Math.max(5,Math.min(100,Math.round((e.clientX-r.left)/r.width*20)*5));paint()}});
       b.addEventListener('pointerup',()=>{clearTimeout(lp);lp=null;if(long){long=false;return}if(sx==null)return;const was=mv;sx=null;busy=false;lastLocal=Date.now();
         if(was){patchAcc(a.id,a.on?{bri:cur}:{on:true,bri:cur});paint();return}
-        if(!t){if(a.kind==='camera')openCam(a.id);else if(a.kind==='climate')toast('Termostat ayarlardan yönetilir');else toast((a.name||'')+': '+(a.kind==='sensor'?sensDet(a):'henüz veri yok'));return}
+        if(!t){if(isTV(a))openSheet(a);else if(a.kind==='camera')openCam(a.id);else if(a.kind==='climate')toast('Termostat ayarlardan yönetilir');else toast((a.name||'')+': '+(a.kind==='sensor'?sensDet(a):'henüz veri yok'));return}
         const now=!a.on;patchAcc(a.id,{on:now});b.classList.remove('fx');void b.offsetWidth;b.classList.add('fx');paint();refreshCounts()});
       b.addEventListener('pointercancel',()=>{clearTimeout(lp);lp=null;sx=null;busy=false});
       gt.appendChild(b)});return gt}
@@ -1877,6 +1887,7 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
     if(t)h+='<button class="ph-sh-b" data-a="tog">'+(a.kind==='cover'?(a.on?'Perdeyi kapat':'Perdeyi aç'):(a.on?'Kapat':'Aç'))+'</button>';
     if(t&&a.dim)h+='<div class="ph-sh-sl"><input type="range" min="5" max="100" step="5" value="'+(a.bri??100)+'" aria-label="Parlaklık"><b>'+(a.bri??100)+'%</b></div>';
     if(a.kind==='climate'){const sT=a.setT??22;h+='<div class="ph-sh-t"><button data-a="d-0.5" aria-label="Azalt">−</button><b>'+fx2(sT)+'°</b><button data-a="d0.5" aria-label="Artır">+</button></div>'+(typeof a.curT==='number'?'<p class="ph-sh-n">Şu an '+fx2(a.curT)+'°</p>':'')+'<button class="ph-sh-b" data-a="cl">'+(a.on!==false?'Kapat':'Aç')+'</button>'}
+    if(isTV(a))h+='<button class="ph-sh-b" data-a="t-acik:'+(a.on?0:1)+'">'+(a.on?'Kapat':'Aç')+'</button><div class="ph-sh-t"><button data-a="t-sesDelta:-2" aria-label="Ses azalt">−</button><b>Ses '+(typeof a.ses==="number"?a.ses:"–")+'</b><button data-a="t-sesDelta:2" aria-label="Ses artır">+</button></div><button class="ph-sh-b" data-a="t-sessiz:'+(a.sessiz?0:1)+'">'+(a.sessiz?'Sesi aç':'Sessiz')+'</button>';
     if(a.kind==='camera')h+='<button class="ph-sh-b" data-a="cam">Canlı görüntüyü aç</button>';
     if(a.kind==='sensor')h+='<p class="ph-sh-n">'+esc(sensDet(a))+'</p>';
     h+='<div class="ph-sh-r"><button data-a="fav">'+(isF?'★ Favoriden çıkar':'☆ Favori')+'</button><button data-a="mv-1">← Önce</button><button data-a="mv1">Sonra →</button></div><div class="ph-sh-r"><button data-a="x">Kapat</button></div>';
@@ -1884,6 +1895,7 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
     const r=sh.querySelector('input[type=range]');if(r){r.oninput=()=>{r.nextSibling.textContent=r.value+'%'};r.onchange=()=>{lastLocal=Date.now();patchAcc(a.id,{on:true,bri:+r.value});drawS()}}}
   sh.onclick=e=>{const b=e.target.closest('button[data-a]');if(!b||!shA)return;const a=shA,k=b.dataset.a;lastLocal=Date.now();
     if(k==='x')return closeS();
+    if(k.slice(0,2)==='t-'){tvTikla(a,{dataset:{t:k.slice(2)}});setTimeout(drawS,60);return}
     if(k==='tog'){patchAcc(a.id,{on:!a.on});drawS()}
     else if(k==='cl'){patchAcc(a.id,{on:a.on===false});drawS()}
     else if(k[0]==='d'){const v=Math.max(5,Math.min(30,(a.setT??22)+ +k.slice(1)));a.setT=v;drawS();clearTimeout(tT);tT=setTimeout(()=>patchAcc(a.id,{setT:v}),500)}
