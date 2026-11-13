@@ -254,11 +254,11 @@ input[type=text],input[type=number],select{width:100%;background:var(--panel-2);
 @media (max-width:680px){.wx{overflow:hidden}.wx-ico{display:none}}
 
 html.ph,html.ph body{max-width:100vw;overflow-x:hidden}html.ph .app>*,html.ph .view,html.ph .stage-wrap{min-width:0;max-width:100%}
-html.ph .room-views{display:none}html.ph #thermo{display:none}html.ph #roomsOv{display:none}
+html.ph .room-views{display:none}html.ph #view-kontrol{padding-bottom:84px}html.ph #thermo{display:none}html.ph #roomsOv{display:none}
 html.ph .hint{font-size:12px}
 @media (orientation:landscape){html.ph .app{gap:8px}html.ph .stage{height:calc(100dvh - 104px);min-height:250px}html.ph .room-views{display:none}}
 @media (orientation:portrait){html.ph .stage{height:min(80dvh,900px)}}
-.ph-md{display:flex;width:max-content;margin:0 0 10px;background:#141a3de6;border:1px solid #2a3260;border-radius:14px;overflow:hidden}
+.ph-md{position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:60;box-shadow:0 8px 28px #000b;display:flex;width:max-content;margin:0;background:#141a3de6;border:1px solid #2a3260;border-radius:14px;overflow:hidden}
 .ph-md button{min-height:44px;padding:0 20px;font-size:14px;font-weight:600;background:none;border:0;color:#aab2dd;border-radius:0}.ph-md button[aria-pressed=true]{background:#2c3a8c;color:#fff}
 .ph-ls{padding:4px 0 110px;color:#e8ebff}
 .ph-rs{margin-bottom:10px}.ph-rh{display:flex;align-items:center;gap:10px}.ph-rh h3{margin:0;font-size:24px;font-weight:700;flex:1}.ph-rh small{color:#aab2dd;font-size:13px}
@@ -887,7 +887,9 @@ function init3D(){
   let theta=(PH&&innerHeight>innerWidth)?Math.PI/2:0,phi=PH?0.02:0.72,zoom=1,baseR=14;
   function fit(){const w=stage.clientWidth,h=stage.clientHeight;if(!w||!h)return;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false);
     const vf=camera.fov*Math.PI/360,hf=Math.atan(Math.tan(vf)*camera.aspect);
-    if(PH){const por=h>w;theta=por?Math.PI/2:0;phi=0.02;const hb=houseBox(),sw=por?hb.hd:hb.hw,sh=por?hb.hw:hb.hd,mx=por?74:70,my=por?86:76;
+    if(PH){const por=h>w;theta=por?Math.PI/2:0;phi=0.02;const hb=houseBox(),sw=por?hb.hd:hb.hw,sh=por?hb.hw:hb.hd,mx=por?52:56,my=por?54:56;
+      {const ppu=(w-2*mx)/(2*sw),need=Math.round(2*sh*ppu+2*my),cap=Math.max(300,Math.round(innerHeight*(por?.86:.72))),hh=Math.max(260,Math.min(need,cap));
+       if(Math.abs(hh-h)>3&&!stage.__ph){stage.__ph=1;stage.style.height=hh+'px';stage.style.minHeight='0';requestAnimationFrame(()=>{stage.__ph=0;fit()});return}}
       baseR=Math.max(sw/(Math.tan(hf)*Math.max(.3,(w-2*mx)/w)),sh/(Math.tan(vf)*Math.max(.3,(h-2*my)/h)))}
     else baseR=Math.max(camHW/Math.tan(hf),(camHD+1.2*Math.sin(phi))/Math.tan(vf))*1.02;needs=true}
   function placeCam(){const r=baseR*zoom;camera.position.set(target.x+r*Math.sin(phi)*Math.sin(theta),target.y+r*Math.cos(phi),target.z+r*Math.sin(phi)*Math.cos(theta));camera.lookAt(target)}
