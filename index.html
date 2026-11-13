@@ -415,6 +415,7 @@ html.ph .hint{font-size:12px}
       <div class="card conn">
         <h3>LG TV bağlantısı (webOS)</h3>
         <label class="f" for="lgIp">TV’nin IP adresi<input type="text" id="lgIp" inputmode="decimal" autocomplete="off" placeholder="ör. 192.168.68.50"></label>
+        <label class="f" for="lgKod">Eşleştirme kodu (isteğe bağlı, webOS 26)<input type="text" id="lgKod" autocomplete="off" placeholder="TV’deki IP Control menüsünden"></label>
         <label class="f" for="lgMac">MAC adresi (isteğe bağlı, uzaktan açmak için)<input type="text" id="lgMac" autocomplete="off" placeholder="ör. 90:7A:BE:6F:71:C8"></label>
         <div class="row"><button class="btn" id="lgBtn">Bağlan</button><span class="note" id="lgMsg">Bağlı değil</span></div>
         <div class="row"><button class="btn small ghost" data-lg="sesDelta:-1" type="button">Ses −</button><button class="btn small ghost" data-lg="sesDelta:1" type="button">Ses +</button><button class="btn small ghost" data-lg="sessiz:1" type="button">Sessiz</button><button class="btn small ghost" data-lg="sessiz:0" type="button">Sesi aç</button><button class="btn small ghost" data-lg="acik:0" type="button">Kapat</button><button class="btn small ghost" data-lg="acik:1" type="button">Aç</button></div>
@@ -1597,7 +1598,7 @@ function ihostDurumAl(){if(!IHLIST)return;let n=0;
     if(!!a.on!==c.acik){a.on=c.acik;n++}if(a.dim&&c.parlaklik!=null&&a.bri!==c.parlaklik){a.bri=c.parlaklik;n++}});
   if(n){afterChange(false)}}
 async function lgBaglan(){const m=$('#lgMsg'),ip=$('#lgIp').value.trim();if(!ip){m.textContent='IP adresini yaz';return}m.textContent='Bağlanıyor… TV ekranındaki izin sorusuna Evet de';
-  try{await ihostIstek('/lg/giris',{ip,mac:$('#lgMac').value.trim()||undefined});for(let i=0;i<20;i++){await new Promise(r=>setTimeout(r,2000));const d=await ihostIstek('/lg/durum');
+  try{await ihostIstek('/lg/giris',{ip,mac:$('#lgMac').value.trim()||undefined,kod:$('#lgKod').value.trim()||undefined});for(let i=0;i<20;i++){await new Promise(r=>setTimeout(r,2000));const d=await ihostIstek('/lg/durum');
     if(d.bagli){m.textContent='Bağlandı';ihostListe(false);return}if(d.hata&&!d.istem&&i>3){m.textContent=d.hata;return}}m.textContent='TV yanıt vermedi (açık ve aynı ağda mı?)'}
   catch(x){m.textContent=x.message}}
 async function lgKomutGonder(k){const [a,v]=k.split(':');const g={};if(a==='sesDelta')g.sesDelta=+v;else if(a==='sessiz')g.sessiz=v==='1';else if(a==='acik')g.acik=v==='1';

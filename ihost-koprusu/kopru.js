@@ -408,6 +408,9 @@ http.createServer(async (req, res) => {
       if (mac && !/^([0-9a-f]{2}[:-]?){5}[0-9a-f]{2}$/i.test(mac)) return yanit(res, 400, { hata: 'MAC adresi 90:7A:BE:6F:71:C8 biçiminde olmalı' });
       LG = { ip, ad: String(b.ad || 'LG TV').slice(0, 40) }; if (mac) LG.mac = mac.replace(/[^0-9a-f]/gi, '').replace(/(..)(?=.)/g, '$1:'); LGS = { guc: null, ses: null, sessiz: null, istem: false, hata: '' };
       try { fs.mkdirSync('/data', { recursive: true }); fs.writeFileSync(LG_DOSYA, JSON.stringify(LG)); } catch { }
+      // webOS 26: TV'nin IP Control menüsünde ürettiği eşleştirme kodu istemci anahtarı olarak denenir (deneysel).
+      const kod = String(b.kod || '').trim();
+      if (kod) { if (!/^[\w-]{4,64}$/.test(kod)) return yanit(res, 400, { hata: 'Kod harf/rakamdan oluşmalı' }); try { fs.mkdirSync('/data', { recursive: true }); fs.writeFileSync(process.env.LG_ANAHTAR || '/data/lg-key', kod); } catch { } }
       lgBaslat();
       return yanit(res, 200, { ok: true });
     }
