@@ -318,6 +318,47 @@ async function csKomut(id, b) {
   }
 }
 
+// ---- LG webOS TV (lgtv2 paketi): ilk bağlanışta TV ekranında izin sorusu çıkar; anahtar /data/lg-key'de durur.
+// Açmak için Wake-on-LAN (TV ayarında "Wi-Fi/LAN ile aç" açık olmalı); MAC TV'den otomatik öğrenilir.
+const LG_DOSYA = process.env.LG_DOSYA || '/data/lg.json';
+let LG = { ip: '', ad: 'LG TV' };
+try { LG = Object.assign(LG, JSON.parse(fs.readFileSync(LG_DOSYA, 'utf8'))); } catch { }
+let LGC = null, LGS = { guc: null, ses: null, sessiz: null, istem: false, hata: '' };
+function lgBaslat() {
+  if (!LG.ip || LGC) return;
+  let LGTV; try { LGTV = require('lgtv2'); LGTV = LGTV.default || LGTV; } catch (e) { LGS.hata = 'lgtv2 paketi yüklenemedi (Node 20.19+ gerekir)'; console.log(LGS.hata, e.message); return; }
+  LGC = new LGTV({ host: LG.ip, keyFile: process.env.LG_ANAHTAR || '/data/lg-key', reconnect: 5000 });
+  LGC.on('prompt', () => { LGS.istem = true; });
+  LGC.on('error', e => { LGS.hata = String(e && e.message || e).slice(0, 120); });
+  LGC.on('close', () => { LGS.guc = null; });
+  LGC.on('connect', () => {
+    LGS.istem = false; LGS.hata = '';
+    try { LGC.subscribe('ssap://audio/getVolume', (e, r) => { if (!e && r) { if (typeof r.volume === 'number') LGS.ses = r.volume; if (typeof r.muted === 'boolean') LGS.sessiz = r.muted; } }); } catch { }
+    try { LGC.subscribe('ssap://com.webos.service.tvpower/power/getPowerState', (e, r) => { if (!e && r && r.state) LGS.guc = r.state; }); } catch { }
+  });
+}
+function lgBilgi() {
+  const acik = !!(LGC && LGC.connected) && !/standby|suspend|off/i.test(LGS.guc || '');
+  return { id: 'lg:tv', ad: LG.ad, tur: 'tv', kaynak: 'LG', cevrimici: true, acik, parlaklik: null, dimmer: false, ses: LGS.ses, sessiz: LGS.sessiz };
+}
+async function lgKomut(b) {
+  if (!LG.ip) throw Object.assign(new Error('LG TV bağlı değil'), { durum: 409 });
+  lgBaslat();
+  if (b.acik === true && !(LGC && LGC.connected)) {
+    if (!LGC) throw Object.assign(new Error(LGS.hata || 'LG bağlantısı kurulamadı'), { durum: 502 });
+    try { await LGC.wake(); } catch (e) { throw Object.assign(new Error('TV açılamadı (MAC henüz öğrenilmedi ya da TV’de “Wi-Fi ile aç” kapalı)'), { durum: 502 }); }
+    return;
+  }
+  if (!LGC || !LGC.connected) throw Object.assign(new Error('TV kapalı ya da ulaşılamıyor'), { durum: 503 });
+  if (b.acik === false) await LGC.request('ssap://system/turnOff');
+  if (Number.isFinite(b.ses)) await LGC.request('ssap://audio/setVolume', { volume: Math.max(0, Math.min(100, Math.round(b.ses))) });
+  if (Number.isFinite(b.sesDelta)) await LGC.request(b.sesDelta > 0 ? 'ssap://audio/volumeUp' : 'ssap://audio/volumeDown');
+  if (typeof b.sessiz === 'boolean') await LGC.request('ssap://audio/setMute', { mute: b.sessiz });
+  if (typeof b.giris === 'string' && b.giris) await LGC.request('ssap://tv/switchInput', { inputId: b.giris });
+  if (typeof b.uygulama === 'string' && b.uygulama) await LGC.request('ssap://system.launcher/launch', { id: b.uygulama });
+}
+setTimeout(lgBaslat, 3000);
+
 // ---- HTTP
 function yanit(res, durum, veri) {
   res.writeHead(durum, {
@@ -358,6 +399,19 @@ http.createServer(async (req, res) => {
       if (k.rol !== 'yonetici') return yanit(res, 403, { hata: 'Yalnız yönetici' });
       return yanit(res, 200, await csBaglan(await govdeOku(req)));
     }
+    if (yol === '/lg/giris' && req.method === 'POST') {
+      if (k.rol !== 'yonetici') return yanit(res, 403, { hata: 'Yalnız yönetici' });
+      const b = await govdeOku(req), ip = String(b.ip || '').trim();
+      if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) return yanit(res, 400, { hata: 'Geçerli bir IP adresi yaz (ör. 192.168.68.50)' });
+      if (LGC) { try { LGC.disconnect(); } catch { } LGC = null; }
+      LG = { ip, ad: String(b.ad || 'LG TV').slice(0, 40) }; LGS = { guc: null, ses: null, sessiz: null, istem: false, hata: '' };
+      try { fs.mkdirSync('/data', { recursive: true }); fs.writeFileSync(LG_DOSYA, JSON.stringify(LG)); } catch { }
+      lgBaslat();
+      return yanit(res, 200, { ok: true });
+    }
+    if (yol === '/lg/durum' && req.method === 'GET') {
+      return yanit(res, 200, { ip: LG.ip || null, bagli: !!(LGC && LGC.connected), istem: LGS.istem, hata: LGS.hata, guc: LGS.guc, ses: LGS.ses, sessiz: LGS.sessiz });
+    }
     if (yol === '/meross/giris' && req.method === 'POST') {
       if (k.rol !== 'yonetici') return yanit(res, 403, { hata: 'Yalnız yönetici' });
       return yanit(res, 200, await mrBaglan(await govdeOku(req)));
@@ -374,12 +428,14 @@ http.createServer(async (req, res) => {
       const [ih, mr, cs] = await Promise.all([
         cubeToken ? cubeListe() : Promise.resolve([]),
         mrListe().catch(() => []), csListe().catch(() => [])]);
-      return yanit(res, 200, { cihazlar: ih.concat(mr, cs), meross: { bagli: !!MR.key, cihaz: MR.cihazlar.length }, cosa: { bagli: !!CS.eposta, cihaz: CS.cihazlar.length } });
+      if (LG.ip) cs.push(lgBilgi());
+      return yanit(res, 200, { cihazlar: ih.concat(mr, cs), meross: { bagli: !!MR.key, cihaz: MR.cihazlar.length }, cosa: { bagli: !!CS.eposta, cihaz: CS.cihazlar.length }, lg: { ip: LG.ip || null, bagli: !!(LGC && LGC.connected), istem: LGS.istem } });
     }
     const m = yol.match(/^\/cihaz\/([^/]+)$/);
     if (m && req.method === 'POST') {
       const b = await govdeOku(req), state = {};
       const kimlik = decodeURIComponent(m[1]);
+      if (kimlik.startsWith('lg:')) { await lgKomut(b); return yanit(res, 200, { ok: true }); }
       if (kimlik.startsWith('cosa:')) {
         if (!Number.isFinite(b.hedef) && typeof b.acik !== 'boolean') return yanit(res, 400, { hata: 'hedef ya da acik gerekli' });
         await csKomut(kimlik, b); return yanit(res, 200, { ok: true });

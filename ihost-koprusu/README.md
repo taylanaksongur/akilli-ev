@@ -49,3 +49,6 @@ Aile üyesinin `ev` yetkisi yoksa köprü 403 döner.
 
 ## Cosa termostat
 Cosa'nın resmi arayüzü yok; köprü, Cosa uygulamasının kullandığı bulut arayüzüne (`kiwi.cosa.com.tr`) hesabınla bağlanır (kaynak: homebridge-cosa). Panelde Ayarlar → **Cosa termostat bağlantısı** → Bağlan; sonra Termostat türünde aksesuar ekleyip kaynak “Cosa”, cihaz olarak termostatı seç. Hedef sıcaklık ve aç/kapat panelden yönetilir; ölçülen sıcaklık ve hedef 15 sn'de bir eşitlenir. Köprü güncellemesi için `aksi-kopru` konteynerini yeniden başlat.
+
+## LG webOS TV
+Köprü `lgtv2` paketiyle TV'nin ev ağındaki kontrol arayüzüne (3001/3000) bağlanır. Panelde Ayarlar → **LG TV bağlantısı** → IP yaz → Bağlan; TV ekranında izin sorusuna Evet de (anahtar `/data/lg-key`). Açmak için Wake-on-LAN (MAC TV'den öğrenilir; TV'de “Wi-Fi ile aç” açık olmalı). Panelde Priz türünde, kaynağı “LG” bir aksesuarla aç/kapat. Uçlar: `POST /lg/giris {ip}`, `GET /lg/durum`, `POST /cihaz/lg:tv {acik, ses, sesDelta, sessiz, giris, uygulama}`. `baslat.sh` `lgtv2`'yi `/data/node_modules`'a kurar (Node 20.19+ gerekir).

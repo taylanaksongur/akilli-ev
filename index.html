@@ -214,6 +214,7 @@ input[type=text],input[type=number],select{width:100%;background:var(--panel-2);
 .acc .act button:hover{background:var(--line);color:var(--fg)}
 .src{font-family:var(--f-mono);font-size:10px;padding:1px 6px;border-radius:6px;margin-left:6px;vertical-align:1px}
 .src.ihost{background:rgba(74,99,255,.25);color:#b8c3ff}
+.src.lg{background:rgba(190,120,255,.18);color:#d8b0ff}
 .src.cosa{background:rgba(255,138,91,.18);color:#ffb08f}
 .src.meross{background:rgba(54,211,154,.18);color:#8ff0c6}
 .src.hb{background:rgba(255,191,94,.18);color:var(--warm)}
@@ -412,6 +413,13 @@ html.ph .hint{font-size:12px}
         <datalist id="ihostList"></datalist>
       </div>
       <div class="card conn">
+        <h3>LG TV bağlantısı (webOS)</h3>
+        <label class="f" for="lgIp">TV’nin IP adresi<input type="text" id="lgIp" inputmode="decimal" autocomplete="off" placeholder="ör. 192.168.68.50"></label>
+        <div class="row"><button class="btn" id="lgBtn">Bağlan</button><span class="note" id="lgMsg">Bağlı değil</span></div>
+        <div class="row"><button class="btn small ghost" data-lg="sesDelta:-1" type="button">Ses −</button><button class="btn small ghost" data-lg="sesDelta:1" type="button">Ses +</button><button class="btn small ghost" data-lg="sessiz:1" type="button">Sessiz</button><button class="btn small ghost" data-lg="sessiz:0" type="button">Sesi aç</button><button class="btn small ghost" data-lg="acik:0" type="button">Kapat</button><button class="btn small ghost" data-lg="acik:1" type="button">Aç</button></div>
+        <p class="note">Bağlan’a basınca TV ekranında bir izin sorusu çıkar, <b>Evet</b> de. TV’yi uzaktan açmak için TV ayarında “Wi-Fi ile aç / Mobil TV Aç” seçeneği açık olmalı. Sonra Ayarlar’da <b>Priz</b> türünde aksesuar ekleyip kaynak olarak “LG”yi seç; balonuyla TV’yi aç/kapatırsın.</p>
+      </div>
+      <div class="card conn">
         <h3>Cosa termostat bağlantısı</h3>
         <label class="f" for="cosaMail">Cosa hesabı e-posta<input type="email" id="cosaMail" autocomplete="off" autocapitalize="off" placeholder="Cosa uygulamasındaki e-posta"></label>
         <label class="f" for="cosaPass">Cosa şifresi<input type="password" id="cosaPass" autocomplete="off" placeholder="iHost köprüsüne iletilir, panelde saklanmaz"></label>
@@ -531,12 +539,12 @@ const KINDS={
   climate:{label:'Termostat',n:1,c:'#ff8a5b',ico:'M10 4a2 2 0 0 1 4 0v10a4 4 0 1 1-4 0zM12 9v7'},
   camera:{label:'Kamera',n:1,c:'#ff6b81',ico:'M3 7h11v10H3zM14 10.5l7-3.5v10l-7-3.5z'}
 };
-const SRC=['iHost','Meross','Cosa','Homebridge','Imou','Diğer'];const BRG=s=>s==='iHost'||s==='Meross'||s==='Cosa';
+const SRC=['iHost','Meross','Cosa','LG','Homebridge','Imou','Diğer'];const BRG=s=>s==='iHost'||s==='Meross'||s==='Cosa'||s==='LG';
 const hhmm=t=>{const d=new Date(t),b=new Date(),z=x=>String(x).padStart(2,'0'),h=z(d.getHours())+':'+z(d.getMinutes());
   return d.toDateString()===b.toDateString()?h:new Date(b-864e5).toDateString()===d.toDateString()?'dün '+h:z(d.getDate())+'.'+z(d.getMonth()+1)+' '+h};
 const sensTxt=a=>a.det===true?'Hareket var':a.sH?'Son hareket '+hhmm(a.sH):a.det===false?'Hareket yok':(a.extId&&BRG(a.src)?'Hareket bekleniyor':'Veri yok');
 const sensDet=a=>[sensTxt(a)+(a.det==null&&!a.sH&&a.extId&&BRG(a.src)?(a.cap?' (iHost bildirdiği: '+(a.cap.join(', ')||'hiçbir durum')+')':' (köprü güncel değil)'):'')].concat(typeof a.sT==='number'?[a.sT.toFixed(1).replace('.',',')+'°']:[],typeof a.sN==='number'?['%'+Math.round(a.sN)]:[]).join(' · ');
-const srcCls=s=>s==='iHost'?'ihost':s==='Meross'?'meross':s==='Cosa'?'cosa':s==='Homebridge'?'hb':s==='Imou'?'imou':'ex';
+const srcCls=s=>s==='iHost'?'ihost':s==='Meross'?'meross':s==='Cosa'?'cosa':s==='LG'?'lg':s==='Homebridge'?'hb':s==='Imou'?'imou':'ex';
 const GR='<defs><radialGradient id="phgb" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#fffbe8"/><stop offset="1" stop-color="#ffd27a"/></radialGradient><radialGradient id="phgz" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#eef1fb"/><stop offset="1" stop-color="#a9b1d1"/></radialGradient></defs>';
   const OBJ0=(k,on)=>{const g=on?'url(#phgb)':'url(#phgz)';
     if(k==='lamp')return `<svg viewBox="0 0 64 64">${GR}${on?'<polygon points="18,26 46,26 54,58 10,58" fill="rgba(255,205,130,.28)"/>':''}<polygon points="22,8 42,8 49,26 15,26" fill="${on?'#ffdca4':'#cdd2ec'}" stroke="#b9a37a"/><rect x="30.5" y="26" width="3" height="28" fill="#c7ccdf"/><ellipse cx="32" cy="55" rx="11" ry="3" fill="#aab1c8"/></svg>`;
@@ -1212,7 +1220,7 @@ function renderSide(){
         <label class="f" for="fRoom">Oda<select id="fRoom">${Object.keys(ROOMS).map(r=>`<option value="${r}" ${edit.room===r?'selected':''}>${ROOMS[r].name}</option>`).join('')}</select></label>
         <label class="f" for="fSrc">Kaynak<select id="fSrc">${SRC.map(s=>`<option ${edit.src===s?'selected':''}>${s}</option>`).join('')}</select></label>
       </div>
-      <label class="f" for="fExt">${edit.src==='iHost'?'iHost cihazı':edit.src==='Meross'?'Meross cihazı':edit.src==='Cosa'?'Cosa termostatı':'Cihaz kimliği'}${(BRG(edit.src))&&ihostSecenek()?`<select id="fExt"><option value="">— Seç —</option>${ihostSecenek()}</select>`:`<input type="text" id="fExt" value="${esc(edit.extId)}" placeholder="${edit.kind==='camera'?'Imou seri numarası (ör. 7F0A1B2C3D4E5)':edit.src==='iHost'?'iHost listesi yükleniyor… (Ayarlar → Bağlantıyı dene)':edit.src==='Meross'?'Önce Ayarlar’da Meross’a bağlan':'Cihaz kimliği'}">`}</label>
+      <label class="f" for="fExt">${edit.src==='iHost'?'iHost cihazı':edit.src==='Meross'?'Meross cihazı':edit.src==='Cosa'?'Cosa termostatı':edit.src==='LG'?'LG TV':'Cihaz kimliği'}${(BRG(edit.src))&&ihostSecenek()?`<select id="fExt"><option value="">— Seç —</option>${ihostSecenek()}</select>`:`<input type="text" id="fExt" value="${esc(edit.extId)}" placeholder="${edit.kind==='camera'?'Imou seri numarası (ör. 7F0A1B2C3D4E5)':edit.src==='iHost'?'iHost listesi yükleniyor… (Ayarlar → Bağlantıyı dene)':edit.src==='Meross'?'Önce Ayarlar’da Meross’a bağlan':'Cihaz kimliği'}">`}</label>
       ${edit.kind==='camera'?camPickerHTML():''}
       ${k.light?`<label class="check" for="fDim"><input type="checkbox" id="fDim" ${edit.dim?'checked':''}>Parlaklık ayarlanabilir (dimmer)</label>`:''}
       ${edit.kind==='strip'?`<label class="check" for="fLoop"><input type="checkbox" id="fLoop" ${edit.loop?'checked':''}>Kapalı döngü (son nokta ilkine bağlansın)</label>`:''}
@@ -1276,7 +1284,7 @@ function renderSettings(){
 
 /* ---------- Olaylar ---------- */
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-view],[data-kind],[data-edit],[data-scene],#addBtn,#fSave,#fCancel,#fDel,#fDelYes,#fDelNo,#clearEx,#clearExYes,#ihostBtn,#ihostPair,#merossBtn,#merossTara,#cosaBtn');if(!t)return;
+  const t=e.target.closest('[data-view],[data-kind],[data-edit],[data-scene],#addBtn,#fSave,#fCancel,#fDel,#fDelYes,#fDelNo,#clearEx,#clearExYes,#ihostBtn,#ihostPair,#merossBtn,#merossTara,#cosaBtn,#lgBtn,[data-lg]');if(!t)return;if(t.dataset&&t.dataset.lg){lgKomutGonder(t.dataset.lg);return}
   if(t.dataset.view){if(t.dataset.view==='ayarlar'&&$('#view-ayarlar').hidden){openLock();return}showView(t.dataset.view);return}
   if(t.dataset.kind){readForm();const old=edit.kind;edit.kind=t.dataset.kind;const n=KINDS[edit.kind].n;
     if(n!=='many'&&edit.pts.length>n)edit.pts=edit.pts.slice(-n);const mx=KINDS[edit.kind].max;if(mx&&edit.pts.length>mx)edit.pts=edit.pts.slice(-mx);if(!KINDS[edit.kind].light)edit.dim=false;if(edit.kind==='camera'&&edit.src==='iHost')edit.src='Imou';if(edit.kind==='camera'&&!CAMLIST&&camYetki())setTimeout(loadCamList,0);else if(old==='camera'&&edit.kind!=='camera'&&edit.src==='Imou')edit.src='iHost';
@@ -1297,6 +1305,7 @@ document.addEventListener('click',e=>{
     case 'ihostPair':ihostKaydet();ihostEslestir();break;
     case 'merossBtn':merossBaglan();break;
     case 'cosaBtn':cosaBaglan();break;
+    case 'lgBtn':lgBaglan();break;
     case 'merossTara':merossTara();break;
   }
 });
@@ -1565,7 +1574,8 @@ async function ihostIstek(yol,govde){
 async function ihostListe(goster){const m=$('#ihostMsg');if(goster)m.textContent='Bağlanıyor…';
   try{const j=await ihostIstek('/cihazlar');IHLIST=j.cihazlar||[];
     $('#ihostList').innerHTML=IHLIST.map(c=>`<option value="${esc(c.id)}">${esc(c.ad)}${c.cevrimici?'':' (çevrim dışı)'}</option>`).join('');
-    const nM=IHLIST.filter(c=>c.kaynak==='Meross').length,nC=IHLIST.filter(c=>c.kaynak==='Cosa').length;m.textContent=`Bağlı · ${IHLIST.length-nM-nC} cihaz`;
+    const nM=IHLIST.filter(c=>c.kaynak==='Meross').length,nC=IHLIST.filter(c=>c.kaynak==='Cosa').length,nL=IHLIST.filter(c=>c.kaynak==='LG').length;m.textContent=`Bağlı · ${IHLIST.length-nM-nC-nL} cihaz`;
+    if(j.lg&&$('#lgMsg')&&j.lg.ip)$('#lgMsg').textContent=j.lg.bagli?'Bağlı · '+j.lg.ip:j.lg.istem?'TV ekranındaki izin sorusuna Evet de':'TV kapalı ya da ulaşılamıyor';
     if(j.cosa&&$('#cosaMsg'))$('#cosaMsg').textContent=j.cosa.bagli?`Bağlı · ${nC} termostat`:'Bağlı değil';
     if(j.meross){$('#merossMsg').textContent=j.meross.bagli?`Bağlı · ${nM} kanal`+(j.meross.cihaz&&!nM?' (ağda aranıyor)':''):'Bağlı değil'}ihostDurumAl();
     if(edit&&(BRG(edit.src))&&!document.querySelector('select#fExt')){readForm();renderSide()}}
@@ -1585,6 +1595,12 @@ function ihostDurumAl(){if(!IHLIST)return;let n=0;
     if(c.acik==null)return;
     if(!!a.on!==c.acik){a.on=c.acik;n++}if(a.dim&&c.parlaklik!=null&&a.bri!==c.parlaklik){a.bri=c.parlaklik;n++}});
   if(n){afterChange(false)}}
+async function lgBaglan(){const m=$('#lgMsg'),ip=$('#lgIp').value.trim();if(!ip){m.textContent='IP adresini yaz';return}m.textContent='Bağlanıyor… TV ekranındaki izin sorusuna Evet de';
+  try{await ihostIstek('/lg/giris',{ip});for(let i=0;i<20;i++){await new Promise(r=>setTimeout(r,2000));const d=await ihostIstek('/lg/durum');
+    if(d.bagli){m.textContent='Bağlandı';ihostListe(false);return}if(d.hata&&!d.istem&&i>3){m.textContent=d.hata;return}}m.textContent='TV yanıt vermedi (açık ve aynı ağda mı?)'}
+  catch(x){m.textContent=x.message}}
+async function lgKomutGonder(k){const [a,v]=k.split(':');const g={};if(a==='sesDelta')g.sesDelta=+v;else if(a==='sessiz')g.sessiz=v==='1';else if(a==='acik')g.acik=v==='1';
+  try{await ihostIstek('/cihaz/lg:tv',g);$('#lgMsg').textContent='Gönderildi'}catch(x){$('#lgMsg').textContent=x.message}}
 async function cosaBaglan(){const m=$('#cosaMsg'),e=$('#cosaMail').value.trim(),p=$('#cosaPass').value;
   if(!e||!p){m.textContent='E-posta ve şifreyi yaz';return}m.textContent='Bağlanıyor…';
   try{const j=await ihostIstek('/cosa/giris',{eposta:e,sifre:p});$('#cosaPass').value='';m.textContent=`Bağlandı · ${j.cihaz} termostat`;ihostListe(false)}
