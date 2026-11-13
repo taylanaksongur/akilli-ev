@@ -1051,7 +1051,7 @@ function rebuildAcc(){
         m.position.set(x,y,z);m.rotation.order='YXZ';m.rotation.set(rx,ry,0);m.userData={id:a.id,target:0,k};g.add(m);T.HALO.push(m)};
       segs.forEach(([[x1,z1],[x2,z2]])=>{const len=Math.hypot(x2-x1,z2-z1),ang=Math.atan2(z2-z1,x2-x1),cx=(x1+x2)/2,cz=(z1+z2)/2;
         const bar=emis(A(new THREE.BoxGeometry(Math.max(len,0.05)+0.04,0.04,0.04),basic(),cx,hy,cz),a.id);bar.rotation.y=-ang;
-        const h=hit(a.id,cx,hy,cz,new THREE.BoxGeometry(Math.max(len,0.3),0.4,0.4));h.rotation.y=-ang;
+        const h=hit(a.id,cx,hy,cz,new THREE.BoxGeometry(Math.max(len,0.3),0.4,0.4));h.rotation.y=-ang;h.userData.st=[x1,hy,z1];
         glow(new THREE.PlaneGeometry(len+0.12,0.55),cx,hy,cz,-Math.PI/2,-ang,1);   /* yatay ışık bandı */
         glow(new THREE.PlaneGeometry(len+0.12,0.45),cx,hy,cz,0,-ang,0.9);          /* dikey ışık bandı */
         if(hy>0.25)glow(new THREE.PlaneGeometry(len+0.3,1.3),cx,0.012,cz,-Math.PI/2,-ang,0.35); /* zemine vuran yayılım */
@@ -1078,7 +1078,7 @@ function rebuildAcc(){
       const c=new THREE.Group();c.position.set((x1+x2)/2,0,(z1+z2)/2);c.rotation.y=-ang;g.add(c);
       const panels=[0,1].map(()=>{const p=new THREE.Mesh(new THREE.BoxGeometry(Math.max(len,0.1)/2,1.95,0.06),mat.curtain);p.position.y=1.02;p.castShadow=p.receiveShadow=true;c.add(p);return p});
       c.userData={id:a.id,len:Math.max(len,0.1),panels,v:a.on?0.14:1,target:a.on?0.14:1};layoutCover(c);T.COVERS.push(c);
-      const h=hit(a.id,(x1+x2)/2,1,(z1+z2)/2,new THREE.BoxGeometry(Math.max(len,0.3),2,0.4));h.rotation.y=-ang}
+      const h=hit(a.id,(x1+x2)/2,1,(z1+z2)/2,new THREE.BoxGeometry(Math.max(len,0.3),2,0.4));h.rotation.y=-ang;h.userData.st=[x1,1,z1]}
   });
   needs=true;
 }
@@ -1641,16 +1641,16 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
     lights.forEach(h=>{const a=ACC[h.userData.id];k+='|'+a.id+(a.on?1:0)+a.name+a.bri+(a.room||'')});k+=JSON.stringify(DEVST)+(IHLIST?IHLIST.length+IHLIST.filter(c=>c.cevrimici===false).map(c=>c.id).join():'');
     if(k===sig)return;sig=k;
     const proj=h=>{h.getWorldPosition(v);v.project(cam);return v.z>1?null:{x:(v.x+1)/2*W,y:(1-v.y)/2*H}};
-    const groups={};lights.forEach(h=>{const q=proj(h);if(!q)return;const id=h.userData.id,g=groups[id]||(groups[id]={x:0,y:0,n:0});g.x+=q.x;g.y+=q.y;g.n++});
+    const groups={};lights.forEach(h=>{const q=proj(h);if(!q)return;const id=h.userData.id,g=groups[id]||(groups[id]={x:0,y:0,n:0});g.x+=q.x;g.y+=q.y;g.n++;if(g.ax==null){const s0=h.userData.st;let r=q;if(s0){v.set(s0[0],s0[1],s0[2]);h.parent.localToWorld(v);v.project(cam);r=v.z>1?null:{x:(v.x+1)/2*W,y:(1-v.y)/2*H}}if(r&&r.x>=10&&r.x<=W-10&&r.y>=10&&r.y<=H-10){g.ax=r.x;g.ay=r.y}}});
     const zones=[box(document.getElementById('roomsOv')),box(document.getElementById('thermo')),box(stage.querySelector('.stage-ctrl')),box(document.getElementById('phModBtn'))].filter(Boolean);
     const busy=[];obst.forEach(h=>{const q=proj(h);if(q)busy.push({x:q.x,y:q.y,w:30,h:30})});
-    let P=Object.keys(groups).sort().map(id=>{const g=groups[id];return{id,ids:[id],x:g.x/g.n,y:g.y/g.n}});
+    let P=Object.keys(groups).sort().map(id=>{const g=groups[id];return{id,ids:[id],x:g.ax!=null?g.ax:g.x/g.n,y:g.ay!=null?g.ay:g.y/g.n}});
     const byRoom={};P.forEach(p=>{const r=ACC[p.id].room;if(r&&KINDS[ACC[p.id].kind].light)(byRoom[r]=byRoom[r]||[]).push(p)});
     for(const r in byRoom){const L=byRoom[r];if(L.length<2)continue;const cx=L.reduce((t,p)=>t+p.x,0)/L.length,cy=L.reduce((t,p)=>t+p.y,0)/L.length;
       if(L.every(p=>Math.hypot(p.x-cx,p.y-cy)<48)&&!BAL.exp.has(r)&&!(T.getZoom&&T.getZoom()<0.62)){P=P.filter(p=>!L.includes(p));P.push({id:'room:'+r,ids:L.map(p=>p.id),room:r,x:cx,y:cy})}}
     P.sort((a,b)=>a.id<b.id?-1:1);
     Object.values(groups).forEach(g=>busy.push({x:g.x/g.n,y:g.y/g.n,w:14,h:14}));
-    const DIR=[[-1,-1],[1,-1],[-1,0],[1,0],[0,-1],[-1,1],[1,1],[0,1]],DIST=[60,95,135];
+    const DIR=[[-1,-1],[1,-1],[-1,0],[1,0],[0,-1],[-1,1],[1,1],[0,1]],DIST=[44,70,100];
     const placed=[],seen={},over=[];let d='',dOn='';
     const fits=(x,y,wl)=>{const L=x-Math.max(26,wl/2),R=x+Math.max(26,wl/2),Tp=y-26,B=y+40;
       if(L<4||R>W-4||Tp<4||B>H-4)return false;
@@ -1692,16 +1692,16 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
     lights.forEach(h=>{const a=ACC[h.userData.id];k+='|'+a.id+(a.on?1:0)+a.name+a.bri+(a.room||'')});k+=JSON.stringify(DEVST)+(IHLIST?IHLIST.length+IHLIST.filter(c=>c.cevrimici===false).map(c=>c.id).join():'');
     if(k===sig)return;sig=k;
     const proj=h=>{h.getWorldPosition(v);v.project(cam);return v.z>1?null:{x:(v.x+1)/2*W,y:(1-v.y)/2*H}};
-    const groups={};lights.forEach(h=>{const q=proj(h);if(!q||q.x<10||q.x>W-10||q.y<10||q.y>H-10)return;const id=h.userData.id,g=groups[id]||(groups[id]={x:0,y:0,n:0});g.x+=q.x;g.y+=q.y;g.n++});
+    const groups={};lights.forEach(h=>{const q=proj(h);if(!q||q.x<10||q.x>W-10||q.y<10||q.y>H-10)return;const id=h.userData.id,g=groups[id]||(groups[id]={x:0,y:0,n:0});g.x+=q.x;g.y+=q.y;g.n++;if(g.ax==null){const s0=h.userData.st;let r=q;if(s0){v.set(s0[0],s0[1],s0[2]);h.parent.localToWorld(v);v.project(cam);r=v.z>1?null:{x:(v.x+1)/2*W,y:(1-v.y)/2*H}}if(r&&r.x>=10&&r.x<=W-10&&r.y>=10&&r.y<=H-10){g.ax=r.x;g.ay=r.y}}});
     const zones=[box(document.getElementById('roomsOv')),box(document.getElementById('thermo')),box(stage.querySelector('.stage-ctrl')),box(document.getElementById('phModBtn'))].filter(Boolean);
     const busy=[];obst.forEach(h=>{const q=proj(h);if(q)busy.push({x:q.x,y:q.y,w:30,h:30})});
-    let P=Object.keys(groups).sort().map(id=>{const g=groups[id];return{id,ids:[id],x:g.x/g.n,y:g.y/g.n}});
+    let P=Object.keys(groups).sort().map(id=>{const g=groups[id];return{id,ids:[id],x:g.ax!=null?g.ax:g.x/g.n,y:g.ay!=null?g.ay:g.y/g.n}});
     const byRoom={};P.forEach(p=>{const r=ACC[p.id].room;if(r&&KINDS[ACC[p.id].kind].light)(byRoom[r]=byRoom[r]||[]).push(p)});
     for(const r in byRoom){const L=byRoom[r];if(L.length<2)continue;const cx=L.reduce((t,p)=>t+p.x,0)/L.length,cy=L.reduce((t,p)=>t+p.y,0)/L.length;
       if(!(T.getZoom&&T.getZoom()<0.62)&&!BAL.exp.has(r)){P=P.filter(p=>!L.includes(p));P.push({id:'room:'+r,ids:L.map(p=>p.id),room:r,x:cx,y:cy})}}
     P.sort((a,b)=>a.id<b.id?-1:1);
     Object.values(groups).forEach(g=>busy.push({x:g.x/g.n,y:g.y/g.n,w:14,h:14}));
-    const DIR=[[-1,-1],[1,-1],[-1,0],[1,0],[0,-1],[-1,1],[1,1],[0,1]],DIST=[60,95,135];
+    const DIR=[[-1,-1],[1,-1],[-1,0],[1,0],[0,-1],[-1,1],[1,1],[0,1]],DIST=[44,70,100];
     const placed=[],seen={},over=[];let d='',dOn='';
     const hb=houseBox(),cn=[[hb.x0,hb.y0],[hb.x1,hb.y0],[hb.x1,hb.y1],[hb.x0,hb.y1]].map(q=>{v.set(X(q[0]),0.05,Z(q[1]));v.project(cam);return{x:(v.x+1)/2*W,y:(1-v.y)/2*H}});
     const HR={l:Math.min(...cn.map(q=>q.x)),r:Math.max(...cn.map(q=>q.x)),t:Math.min(...cn.map(q=>q.y)),b:Math.max(...cn.map(q=>q.y))};
@@ -1717,13 +1717,13 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
       const o={name:a.name,kind:a0.kind,on:grp?(n===A.length?1:n?.5:0):(a0.on?1:0),bri:briL.length?Math.round(briL.reduce((t,v)=>t+v,0)/briL.length):(n?100:null),
         n:grp?A.length:0,pend:p.ids.some(id=>DEVST[id]&&DEVST[id].p),na:p.ids.every(id=>(DEVST[id]&&DEVST[id].err)||devNa(ACC[id]))};
       const wl=Math.min(140,a.name.length*6.2+8);
-      const at=(sd,t)=>sd===0?{x:Math.min(W-30,Math.max(30,p.x+t)),y:HR.t-34}:sd===1?{x:Math.min(W-30,Math.max(30,p.x+t)),y:HR.b+34}:sd===2?{x:HR.l-34,y:Math.min(H-44,Math.max(30,p.y+t))}:{x:HR.r+34,y:Math.min(H-44,Math.max(30,p.y+t))};
+      const at=(sd,t)=>sd===0?{x:Math.min(W-30,Math.max(30,p.x+t)),y:HR.t-28}:sd===1?{x:Math.min(W-30,Math.max(30,p.x+t)),y:HR.b+28}:sd===2?{x:HR.l-28,y:Math.min(H-44,Math.max(30,p.y+t))}:{x:HR.r+28,y:Math.min(H-44,Math.max(30,p.y+t))};
       const TS=[0,60,-60,120,-120,180,-180,240,-240,300,-300,360,-360,440,-440,520,-520,620,-620];
       let got=null;const cu=custom[p.id];
       if(cu){v.set(cu.x,0,cu.z);v.project(cam);const cx=(v.x+1)/2*W,cy=(1-v.y)/2*H;if(cx>30&&cx<W-30&&cy>30&&cy<H-44)got={x:cx,y:cy,c:null}}
       if(!got){const cand=[];const prev=pos[p.id];if(prev&&!!prev.o===OUT)cand.push(prev);
         if(OUT){[0,1,2,3].forEach(sd=>TS.forEach(t=>{const q=at(sd,t);cand.push({o:1,sd,t,d:Math.hypot(q.x-p.x,q.y-p.y)})}));cand.sort((u,w)=>(u.d||0)-(w.d||0))}
-        else{[60,95,135].forEach(r=>[-90,-45,0,45,90,135,180,-135].forEach(a=>cand.push({o:0,r,a})))}
+        else{[44,70,100].forEach(r=>[-90,-45,0,45,90,135,180,-135].forEach(a=>cand.push({o:0,r,a})))}
         const posC=c=>c.o?at(c.sd,c.t):{x:p.x+c.r*Math.cos(c.a*Math.PI/180),y:p.y+c.r*Math.sin(c.a*Math.PI/180)};
         for(const c of cand){const q=posC(c);if(fits(q.x,q.y,c.o&&c.sd>=2?Math.min(wl,64):wl)){got={x:q.x,y:q.y,c:c.o?{o:1,sd:c.sd,t:c.t}:{o:0,r:c.r,a:c.a}};break}}}
       if(!got){over.push(...p.ids);delete pos[p.id];return}
