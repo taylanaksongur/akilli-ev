@@ -1593,7 +1593,7 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
     const zones=[box(document.getElementById('roomsOv')),box(document.getElementById('thermo')),box(stage.querySelector('.stage-ctrl')),box(document.getElementById('phModBtn'))].filter(Boolean);
     const busy=[];obst.forEach(h=>{const q=proj(h);if(q)busy.push({x:q.x,y:q.y,w:30,h:30})});
     let P=Object.keys(groups).sort().map(id=>{const g=groups[id];return{id,ids:[id],x:g.x/g.n,y:g.y/g.n}});
-    const byRoom={};P.forEach(p=>{const r=ACC[p.id].room;if(r&&ACC[p.id].kind!=='camera')(byRoom[r]=byRoom[r]||[]).push(p)});
+    const byRoom={};P.forEach(p=>{const r=ACC[p.id].room;if(r&&KINDS[ACC[p.id].kind].light)(byRoom[r]=byRoom[r]||[]).push(p)});
     for(const r in byRoom){const L=byRoom[r];if(L.length<2)continue;const cx=L.reduce((t,p)=>t+p.x,0)/L.length,cy=L.reduce((t,p)=>t+p.y,0)/L.length;
       if(L.every(p=>Math.hypot(p.x-cx,p.y-cy)<48)&&!BAL.exp.has(r)){P=P.filter(p=>!L.includes(p));P.push({id:'room:'+r,ids:L.map(p=>p.id),room:r,x:cx,y:cy})}}
     P.sort((a,b)=>a.id<b.id?-1:1);
@@ -1628,14 +1628,14 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
     more.hidden=!over.length;if(over.length){more.textContent=`+${over.length} ışık`;more.style.top=top+'px';more.setAttribute('aria-expanded',String(listOpen))}
     if(!over.length)listOpen=false;list.hidden=!listOpen;
     if(listOpen){list.style.top=(top+44)+'px';list.innerHTML='';over.forEach(id=>{const a=ACC[id],b=document.createElement('button');b.type='button';b.className=a.on?'on':'';
-      b.setAttribute('aria-pressed',String(!!a.on));b.innerHTML=icon(a.kind,'currentColor',18)+'<span></span>';b.lastChild.textContent=a.name;b.onclick=()=>a.kind==='camera'?openCam(id):flip(id);list.appendChild(b)})}
+      b.setAttribute('aria-pressed',String(!!a.on));b.innerHTML=icon(a.kind,'currentColor',18)+'<span></span>';b.lastChild.textContent=a.name;b.onclick=()=>a.kind==='camera'?openCam(id):(a.kind==='climate'||a.kind==='sensor')?(BAL.sheet&&BAL.sheet(a)):flip(id);list.appendChild(b)})}
   }
   function tickP(){if(!on){running=false;return}requestAnimationFrame(tick);
     if(!T||!T.camera||!v||stage.offsetParent===null)return;
     const W=stage.clientWidth,H=stage.clientHeight,cam=T.camera;cam.updateMatrixWorld();
     let k=W+'|'+H+'|'+FLOOR+'|'+listOpen+'|'+EDIT+'|'+JSON.stringify(custom)+'|'+[...BAL.exp].join()+'|'+cam.matrixWorld.elements.map(e=>e.toFixed(3)).join(',');
     const lights=[],obst=[];
-    (T.HIT||[]).forEach(h=>{const a=ACC[h.userData.id];if(!a||!accF(a)||!KINDS[a.kind])return;if(KINDS[a.kind].light||a.kind==='camera')lights.push(h);else obst.push(h)});
+    (T.HIT||[]).forEach(h=>{const a=ACC[h.userData.id];if(!a||!accF(a)||!KINDS[a.kind])return;lights.push(h)});
     lights.forEach(h=>{const a=ACC[h.userData.id];k+='|'+a.id+(a.on?1:0)+a.name+a.bri+(a.room||'')});k+=JSON.stringify(DEVST)+(IHLIST?IHLIST.length+IHLIST.filter(c=>c.cevrimici===false).map(c=>c.id).join():'');
     if(k===sig)return;sig=k;
     const proj=h=>{h.getWorldPosition(v);v.project(cam);return v.z>1?null:{x:(v.x+1)/2*W,y:(1-v.y)/2*H}};
@@ -1643,7 +1643,7 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
     const zones=[box(document.getElementById('roomsOv')),box(document.getElementById('thermo')),box(stage.querySelector('.stage-ctrl')),box(document.getElementById('phModBtn'))].filter(Boolean);
     const busy=[];obst.forEach(h=>{const q=proj(h);if(q)busy.push({x:q.x,y:q.y,w:30,h:30})});
     let P=Object.keys(groups).sort().map(id=>{const g=groups[id];return{id,ids:[id],x:g.x/g.n,y:g.y/g.n}});
-    const byRoom={};P.forEach(p=>{const r=ACC[p.id].room;if(r&&ACC[p.id].kind!=='camera')(byRoom[r]=byRoom[r]||[]).push(p)});
+    const byRoom={};P.forEach(p=>{const r=ACC[p.id].room;if(r&&KINDS[ACC[p.id].kind].light)(byRoom[r]=byRoom[r]||[]).push(p)});
     for(const r in byRoom){const L=byRoom[r];if(L.length<2)continue;const cx=L.reduce((t,p)=>t+p.x,0)/L.length,cy=L.reduce((t,p)=>t+p.y,0)/L.length;
       if(!(T.getZoom&&T.getZoom()<0.62)&&!BAL.exp.has(r)){P=P.filter(p=>!L.includes(p));P.push({id:'room:'+r,ids:L.map(p=>p.id),room:r,x:cx,y:cy})}}
     P.sort((a,b)=>a.id<b.id?-1:1);
@@ -1675,7 +1675,7 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
         for(const c of cand){const q=posC(c);if(fits(q.x,q.y,c.o&&c.sd>=2?Math.min(wl,64):wl)){got={x:q.x,y:q.y,c:c.o?{o:1,sd:c.sd,t:c.t}:{o:0,r:c.r,a:c.a}};break}}}
       if(!got){over.push(...p.ids);delete pos[p.id];return}
       if(got.c)pos[p.id]=got.c;seen[p.id]=1;const L=got.x-Math.max(26,wl/2),R=got.x+Math.max(26,wl/2);placed.push({L,R,T:got.y-26,B:got.y+40});
-      const m=mark(p.id);paint(m,o);m.fn=grp?()=>{BAL.exp.add(p.room);sig='';toast(a.name+': ışıklar ayrıldı. Boş yere dokununca toplanır')}:(a0.kind==='camera'?()=>openCam(a0.id):null);
+      const m=mark(p.id);paint(m,o);m.fn=grp?()=>{BAL.exp.add(p.room);sig='';toast(a.name+': ışıklar ayrıldı. Boş yere dokununca toplanır')}:(a0.kind==='camera'?()=>openCam(a0.id):(a0.kind==='climate'||a0.kind==='sensor')?()=>BAL.sheet&&BAL.sheet(a0):null);
       const dx=got.x-p.x,dy=got.y-p.y,len=Math.hypot(dx,dy)||1,ex=got.x-dx/len*23,ey=got.y-dy/len*23;
       const seg=`M${p.x.toFixed(1)},${p.y.toFixed(1)}L${ex.toFixed(1)},${ey.toFixed(1)}`;if(a.on)dOn+=seg;else d+=seg;
       m.b.style.left=got.x+'px';m.b.style.top=got.y+'px';m.l.style.left=got.x+'px';m.l.style.top=(got.y+24)+'px';m.l.style.maxWidth='110px';m.b.classList.toggle('edt',EDIT);m.b.dataset.id=p.id});
@@ -1687,7 +1687,7 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
     more.hidden=!over.length;if(over.length){more.textContent=`+${over.length} ışık`;more.style.top=top+'px';more.setAttribute('aria-expanded',String(listOpen))}
     if(!over.length)listOpen=false;list.hidden=!listOpen;
     if(listOpen){list.style.top=(top+44)+'px';list.innerHTML='';over.forEach(id=>{const a=ACC[id],b=document.createElement('button');b.type='button';b.className=a.on?'on':'';
-      b.setAttribute('aria-pressed',String(!!a.on));b.innerHTML=icon(a.kind,'currentColor',18)+'<span></span>';b.lastChild.textContent=a.name;b.onclick=()=>a.kind==='camera'?openCam(id):flip(id);list.appendChild(b)})}
+      b.setAttribute('aria-pressed',String(!!a.on));b.innerHTML=icon(a.kind,'currentColor',18)+'<span></span>';b.lastChild.textContent=a.name;b.onclick=()=>a.kind==='camera'?openCam(id):(a.kind==='climate'||a.kind==='sensor')?(BAL.sheet&&BAL.sheet(a)):flip(id);list.appendChild(b)})}
   }
   function tick(){PH?tickP():tickO()}
 
@@ -1779,7 +1779,7 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
   const bd=mk('div','ph-bd'),sh=mk('div','ph-sheet');bd.hidden=sh.hidden=true;document.body.append(bd,sh);
   let shA=null,tT=null;
   const closeS=()=>{bd.hidden=sh.hidden=true;shA=null;if(LM)renderList()};bd.onclick=closeS;
-  function openSheet(a){shA=a;drawS();bd.hidden=sh.hidden=false}
+  function openSheet(a){shA=a;drawS();bd.hidden=sh.hidden=false}BAL.sheet=openSheet;btn.querySelector('span').textContent='Balonlar';
   const fx2=v=>(+v).toFixed(1).replace('.',',');
   function drawS(){const a=shA,K=KINDS[a.kind],t=TOG(a),isF=FAV.includes(a.id);let h='<div class="ph-sh-h"><strong></strong><small>'+K.label+'</small></div>';
     if(t)h+='<button class="ph-sh-b" data-a="tog">'+(a.kind==='cover'?(a.on?'Perdeyi kapat':'Perdeyi aç'):(a.on?'Kapat':'Aç'))+'</button>';
