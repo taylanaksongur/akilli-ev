@@ -23,9 +23,10 @@ Sürüm: 2.5
 - Hava durumu (Open-Meteo, Pendik) panel ev ağında çalışınca kendi kodundan gelecek.
 
 
-## Telefon modu (2.5)
+## Telefon modu (2.6)
 Yalnızca telefonda (dokunmatik + kısa kenar <600px) otomatik açılır; tablet/masaüstü aynen kalır. `?mod=tel` zorlar, `?mod=klasik` kapatır.
 - Kuşbakışı eşyalı 3B plan, döndürme yok; dikeyde evin uzun kenarı dikey, yatayda yatay.
 - Balonlar evin dışında, çizgiyle aksesuara bağlı; yalnızca ekranda görünen aksesuarlar. Oda balonuna dokun → ayrışır.
 - "Balonları düzenle": sürükle, yer kalıcı (`aksongur-balon-yer`). "3B | Liste" anahtarı (`aksongur-mod`): odalar altında kare aksesuar kutuları, kaydırarak parlaklık.
 - Eski anahtarlar (`aksongur-aksesuarlar`, `aksongur-ihost`, `aksongur-kamera-v3`, `aksongur-kat`, `balonMod`) değişmedi.
+- 2.6: tüm aksesuar türleri (kamera, sensör, klima dahil) balonlu; masaüstü/tablette de balon düzenleme ve yakınlaştırınca gruplar ayrışır; ortak simgeler; Ayarlar → Senaryolar → "Modları düzenle" (`aksongur-modlar`, yalnızca bu tarayıcıda); telefonda alttaki "Tüm ışıklar" düğmeleri kaldırıldı; kamera liste görünümünde kalır.

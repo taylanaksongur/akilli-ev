@@ -278,6 +278,16 @@ html.ph #view-kontrol{position:relative}#phModBtn{position:absolute;top:0;left:0
 .ph-sh-sl{display:flex;align-items:center;gap:12px;margin:0 0 12px}.ph-sh-sl input{flex:1;min-height:44px;accent-color:#ffbf5e}.ph-sh-sl b{min-width:48px;text-align:right;font-size:18px}
 .ph-sh-t{display:flex;align-items:center;justify-content:center;gap:18px;margin:0 0 12px}.ph-sh-t button{width:64px;height:56px;border-radius:14px;background:#26346e;color:#fff;font-size:26px}.ph-sh-t b{font-size:32px;min-width:110px;text-align:center}
 .ph-sh-n{color:#aab2dd;font-size:14px;margin:0 0 12px}
+
+.med{position:fixed;inset:0;z-index:120;background:#000a;display:grid;place-items:center;padding:10px}
+.med-box{width:min(600px,100%);max-height:92dvh;overflow:auto;background:#141a3d;border:1px solid #2a3260;border-radius:18px;padding:16px;color:#e8ebff}
+.med-box h3{margin:0 0 10px}.med-l{display:flex;flex-direction:column;gap:6px}.med-g{margin:10px 0 2px;color:#aab2dd;font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+.med-r{display:flex;align-items:center;gap:8px;min-height:48px;padding:4px 8px;border-radius:12px;background:#1a2252}.med-r select{width:104px;flex:none}.med-r b{flex:1 1 70px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}.med-r small{color:#aab2dd}
+.med-i{display:grid;place-items:center;width:26px;color:#ffd27a}.med-r select,.med-r input[type=number],.med-n input{min-height:40px;border-radius:10px;border:1px solid #34437f;background:#10163a;color:#fff;padding:0 8px;font-size:14px}.med-r input[type=number]{width:74px}.med-r input[type=range]{width:90px;accent-color:#ffbf5e}
+.med-r button,.med-f button{min-height:44px;padding:0 14px;border-radius:12px;background:#26346e;border:1px solid #3d4d8f;color:#fff;font-size:14px;font-weight:600}.med-f{display:flex;gap:8px;margin-top:12px}.med-f button{flex:1}.med-f .pri{background:#4a63ff;border-color:#4a63ff}
+.med-n{display:flex;flex-direction:column;gap:4px;margin:0 0 10px;font-size:13px;color:#aab2dd}.med-n input{width:100%}
+html.ph #allOn,html.ph #allOff{display:none}
+html.ph .cam{position:fixed;left:8px;right:8px;top:64px;width:auto;max-width:640px;margin:0 auto;z-index:95}
 .ph-menu{position:fixed;z-index:70;display:flex;gap:4px;padding:4px;background:#141a3df2;border:1px solid #2a3260;border-radius:14px;box-shadow:0 10px 30px #000b;backdrop-filter:blur(8px)}.ph-menu[hidden]{display:none}
 .ph-menu button{flex:1;min-height:48px;font-size:15px;font-weight:600;color:#aab2dd;background:none;border:0;border-radius:10px}.ph-menu button[aria-pressed=true]{background:#2c3a8c;color:#fff}html.ph #roomsOv{display:none}
 html.ph .hint{font-size:12px}
@@ -340,7 +350,7 @@ html.ph .hint{font-size:12px}
       <div class="rooms-ov" id="roomsOv" aria-label="Odalar"></div>
       <div class="cam" id="camWin" hidden role="dialog" aria-label="Kamera görüntüsü"></div>
       <div class="stage-msg" id="stageMsg"></div>
-      <div class="hint">Tek parmak: döndür · İki parmak: kaydır ve yakınlaş · Farede sağ tık veya Shift ile sürükle: kaydır · Boş yere çift dokun: görünümü sıfırla · Aksesuara dokun: aç / kapat · Kameraya dokun: görüntüyü aç · <span id="ver">Sürüm 2.5</span></div>
+      <div class="hint">Tek parmak: döndür · İki parmak: kaydır ve yakınlaş · Farede sağ tık veya Shift ile sürükle: kaydır · Boş yere çift dokun: görünümü sıfırla · Aksesuara dokun: aç / kapat · Kameraya dokun: görüntüyü aç · <span id="ver">Sürüm 2.6</span></div>
     </div>
   </section>
 
@@ -363,7 +373,7 @@ html.ph .hint{font-size:12px}
     </div>
 
     <div class="card">
-      <h3>Senaryolar</h3>
+      <div class="card-head"><h3>Senaryolar</h3><button class="btn small" id="modEdit" type="button">Modları düzenle</button></div>
       <div class="scenes" id="scenes"></div>
     </div>
 
@@ -515,7 +525,19 @@ const KINDS={
 };
 const SRC=['iHost','Meross','Homebridge','Imou','Diğer'];
 const srcCls=s=>s==='iHost'?'ihost':s==='Meross'?'meross':s==='Homebridge'?'hb':s==='Imou'?'imou':'ex';
-const icon=(k,c='#fff',s=16)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${KINDS[k].ico}"/></svg>`;
+const GR='<defs><radialGradient id="phgb" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#fffbe8"/><stop offset="1" stop-color="#ffd27a"/></radialGradient><radialGradient id="phgz" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#eef1fb"/><stop offset="1" stop-color="#a9b1d1"/></radialGradient></defs>';
+  const OBJ0=(k,on)=>{const g=on?'url(#phgb)':'url(#phgz)';
+    if(k==='lamp')return `<svg viewBox="0 0 64 64">${GR}${on?'<polygon points="18,26 46,26 54,58 10,58" fill="rgba(255,205,130,.28)"/>':''}<polygon points="22,8 42,8 49,26 15,26" fill="${on?'#ffdca4':'#cdd2ec'}" stroke="#b9a37a"/><rect x="30.5" y="26" width="3" height="28" fill="#c7ccdf"/><ellipse cx="32" cy="55" rx="11" ry="3" fill="#aab1c8"/></svg>`;
+    if(k==='pendant')return `<svg viewBox="0 0 64 64">${GR}<rect x="31.5" y="0" width="1.5" height="16" fill="#8f96ad"/><path d="M14 38 Q32 8 50 38Z" fill="${on?'#ffdca4':'#cdd2ec'}" stroke="#b9a37a"/><circle cx="32" cy="40" r="6" fill="${g}"/></svg>`;
+    if(k==='plug')return `<svg viewBox="0 0 64 64"><rect x="16" y="22" width="32" height="26" rx="9" fill="#eef0f8"/><rect x="24" y="10" width="5" height="14" rx="2" fill="#b9bfd6"/><rect x="35" y="10" width="5" height="14" rx="2" fill="#b9bfd6"/><circle cx="32" cy="35" r="4" fill="${on?'#36d39a':'#9aa3c7'}"/></svg>`;
+    if(k==='sensor')return `<svg viewBox="0 0 64 64"><circle cx="32" cy="34" r="16" fill="#eef0f8"/><circle cx="32" cy="34" r="6" fill="#4fc3ff"/><path d="M12 34a20 20 0 0 1 8-16M52 34a20 20 0 0 0-8-16" stroke="#7fd4ff" stroke-width="2" fill="none"/></svg>`;
+    if(k==='strip')return `<svg viewBox="0 0 64 64">${GR}<rect x="6" y="28" width="52" height="9" rx="4.5" fill="${on?'#ffe3a0':'#c3c9e4'}"/><rect x="6" y="37" width="52" height="3" rx="1.5" fill="${on?'rgba(255,200,110,.5)':'rgba(150,158,200,.3)'}"/></svg>`;
+    if(k==='cover')return `<svg viewBox="0 0 64 64"><rect x="8" y="6" width="48" height="3" rx="1.5" fill="#9aa3c7"/><path d="M10 9h${on?10:22}v44c-5-6-5-34 0-44z" fill="#c9a8ff"/><path d="M54 9h-${on?10:22}v44c5-6 5-34 0-44z" fill="#b58cf5"/></svg>`;
+    if(k==='climate')return `<svg viewBox="0 0 64 64"><circle cx="32" cy="34" r="19" fill="#eef0f8"/><circle cx="32" cy="34" r="13" fill="#2a3160"/><text x="32" y="39" text-anchor="middle" font-size="13" font-weight="700" fill="${on?'#ff8a5b':'#36d39a'}">°</text></svg>`;
+    if(k==='camera')return `<svg viewBox="0 0 64 64"><rect x="29" y="4" width="6" height="14" fill="#c7ccdf"/><circle cx="32" cy="30" r="15" fill="#eef0f8"/><circle cx="36" cy="32" r="7" fill="#2a3160"/><circle cx="38" cy="30" r="2" fill="#4fc3ff"/></svg>`;
+    return `<svg viewBox="0 0 64 64">${GR}<circle cx="32" cy="26" r="17" fill="${g}" stroke="${on?'#ffe6a8':'#8e97c9'}"/><rect x="24" y="40" width="16" height="6" rx="2" fill="#aeb4c8"/><rect x="26" y="46" width="12" height="7" rx="2" fill="#8f96ad"/></svg>`};
+const OBJ=(k,on,mono)=>{const t=OBJ0(k,on);return mono?t.replace(/<defs>.*?<\/defs>/,'').replace(/url\(#ph[gb][bz]\)/g,'currentColor').replace(/#(eef0f8|cdd2ec|ffdca4|c3c9e4|ffe3a0|c7ccdf|b9bfd6)/gi,'currentColor'):t};
+const icon=(k,c='#fff',sz=16)=>{k=KINDS[k]?k:'spot';return OBJ(k,0,1).replace('<svg ','<svg width="'+sz+'" height="'+sz+'" style="color:'+c+';flex:none" ')};
 const needPts=k=>KINDS[k].n==='many'?(KINDS[k].max?`1–${KINDS[k].max} nokta`:KINDS[k].min?`en az ${KINDS[k].min} nokta (sırayla birleşir)`:'en az 1 nokta'):KINDS[k].n===1?'1 nokta':'2 nokta (başlangıç ve bitiş)';
 const ptsOk=(k,p)=>KINDS[k].n==='many'?p.length>=(KINDS[k].min||1)&&(!KINDS[k].max||p.length<=KINDS[k].max):p.length===KINDS[k].n;
 
@@ -1201,13 +1223,40 @@ const SCENES=[
   {id:'gece',name:'Gece',sub:'Merdiven LED %15',c:'#2f3f9e',fn:a=>KINDS[a.kind]?.light?{on:a.room==='merdiven',bri:15}:a.kind==='cover'?{on:false}:a.kind==='climate'?{setT:20}:null},
   {id:'kapat',name:'Tümünü kapat',sub:'Evden çıkarken',c:'#2a8a6a',fn:a=>KINDS[a.kind]?.light||a.kind==='plug'?{on:false}:null}
 ];
+const MODK='aksongur-modlar';let CUST=null;try{CUST=JSON.parse(localStorage.getItem(MODK)||'null')}catch(e){}
+function getScenes(){if(!Array.isArray(CUST)||!CUST.length)return SCENES;return CUST.map(m=>({id:m.id,name:m.name,sub:Object.keys(m.items||{}).length+' aksesuar',c:m.c||'#4a63ff',fn:a=>(m.items||{})[a.id]||null}))}
+function modEditor(){
+  let W=(Array.isArray(CUST)&&CUST.length?CUST:SCENES.map(sc=>{const items={};Object.values(ACC).forEach(a=>{const q=sc.fn(a);if(q)items[a.id]=Object.assign({},q)});return{id:sc.id,name:sc.name,c:sc.c,items}})).map(m=>JSON.parse(JSON.stringify(m)));
+  let cur=null;const md=document.createElement('div');md.className='med';document.body.appendChild(md);
+  const close=()=>md.remove();
+  function listV(){md.innerHTML='<div class="med-box"><h3>Modlar</h3><div class="med-l">'+W.map((m,i)=>`<div class="med-r"><b>${esc(m.name)}</b><small>${Object.keys(m.items).length} aksesuar</small><button data-a="ed" data-i="${i}">Düzenle</button><button data-a="del" data-i="${i}" aria-label="Sil">Sil</button></div>`).join('')+'</div><div class="med-f"><button data-a="new">+ Yeni mod</button><button data-a="def">Varsayılana dön</button></div><div class="med-f"><button data-a="x">İptal</button><button class="pri" data-a="save">Kaydet</button></div></div>'}
+  function editV(){const m=W[cur];const accs=Object.values(ACC).filter(a=>KINDS[a.kind]&&a.kind!=='sensor'&&a.kind!=='camera').sort((a,b)=>((a.floor||1)-(b.floor||1))||String(a.room).localeCompare(String(b.room),'tr')||String(a.name).localeCompare(String(b.name),'tr'));
+    let h='<div class="med-box"><h3>Mod düzenle</h3><label class="med-n">Ad<input type="text" id="medName" maxlength="24" value="'+esc(m.name)+'"></label><div class="med-l">',last='';
+    accs.forEach(a=>{const g='Kat '+(a.floor||1)+' · '+((ROOMS[a.room]&&ROOMS[a.room].name)||String(a.room||'Diğer'));if(g!==last){h+='<div class="med-g">'+esc(g)+'</div>';last=g}
+      const it=m.items[a.id]||{},v=it.on===true?'1':it.on===false?'0':'';
+      h+=`<div class="med-r" data-id="${esc(a.id)}"><span class="med-i">${icon(a.kind,'currentColor',22)}</span><b>${esc(a.name)}</b><select data-f="on"><option value="">Dokunma</option><option value="1"${v==='1'?' selected':''}>Aç</option><option value="0"${v==='0'?' selected':''}>Kapat</option></select>`;
+      if(KINDS[a.kind].light&&a.dim)h+=`<input type="range" data-f="bri" min="5" max="100" step="5" value="${it.bri??100}"${v==='1'?'':' disabled'} aria-label="Parlaklık">`;
+      if(a.kind==='climate')h+=`<input type="number" data-f="setT" min="5" max="30" step="0.5" placeholder="°C" value="${it.setT??''}" aria-label="Hedef sıcaklık">`;
+      h+='</div>'});
+    md.innerHTML=h+'</div><div class="med-f"><button data-a="back">Geri</button><button class="pri" data-a="ok">Tamam</button></div></div>'}
+  md.addEventListener('change',e=>{const r=e.target.closest('.med-r[data-id]');if(!r||cur==null)return;const id=r.dataset.id,m=W[cur],it=m.items[id]||(m.items[id]={}),f=e.target.dataset.f;
+    if(f==='on'){if(e.target.value==='')delete it.on;else it.on=e.target.value==='1';const rg=r.querySelector('[data-f=bri]');if(rg)rg.disabled=e.target.value!=='1';if(e.target.value!=='1')delete it.bri;else if(rg)it.bri=+rg.value}
+    else if(f==='bri')it.bri=+e.target.value;else if(f==='setT'){if(e.target.value==='')delete it.setT;else it.setT=Math.max(5,Math.min(30,+e.target.value))}
+    if(!Object.keys(it).length)delete m.items[id]});
+  md.addEventListener('click',e=>{const b=e.target.closest('button[data-a]');if(!b){if(e.target===md)close();return}const k=b.dataset.a,i=+b.dataset.i;
+    if(k==='x')close();else if(k==='ed'){cur=i;editV()}else if(k==='del'){if(W.length>1||confirm('Son mod silinsin mi?')){W.splice(i,1);listV()}}
+    else if(k==='new'){W.push({id:'m'+Date.now().toString(36),name:'Yeni mod',c:'#4a63ff',items:{}});cur=W.length-1;editV()}
+    else if(k==='def'){if(confirm('Tüm modlar varsayılana dönsün mü?')){try{localStorage.removeItem(MODK)}catch(_){}CUST=null;close();renderSettings();toast('Modlar varsayılana döndü')}}
+    else if(k==='back'||k==='ok'){const nm=md.querySelector('#medName');if(nm&&cur!=null)W[cur].name=(nm.value||'').trim()||W[cur].name;cur=null;listV()}
+    else if(k==='save'){CUST=W;try{localStorage.setItem(MODK,JSON.stringify(W))}catch(_){}close();renderSettings();toast('Modlar kaydedildi')}});
+  listV()}
 function runScene(sc){let n=0;Object.values(ACC).forEach(a=>{const p=sc.fn(a);if(!p)return;
   const ch=Object.keys(p).some(k=>a[k]!==p[k]);if(ch){n++;patchAcc(a.id,p)}});toast(`“${sc.name}” çalıştı${n?'':' (değişen bir şey yok)'}`)}
 function renderSettings(){
   renderPicker();renderSide();
   $('#addBtn').disabled=!!edit||store==='loading';
   const ce=$('#clearEx');if(ce)ce.hidden=!!edit||!Object.values(ACC).some(a=>a.example);
-  $('#scenes').innerHTML=SCENES.map(s=>`<button class="scene" style="--sc:${s.c}" data-scene="${s.id}"><span><strong>${s.name}</strong><small>${s.sub}</small></span></button>`).join('');
+  $('#scenes').innerHTML=getScenes().map(s=>`<button class="scene" style="--sc:${s.c}" data-scene="${s.id}"><span><strong>${s.name}</strong><small>${s.sub}</small></span></button>`).join('');
 }
 
 /* ---------- Olaylar ---------- */
@@ -1218,7 +1267,7 @@ document.addEventListener('click',e=>{
     if(n!=='many'&&edit.pts.length>n)edit.pts=edit.pts.slice(-n);const mx=KINDS[edit.kind].max;if(mx&&edit.pts.length>mx)edit.pts=edit.pts.slice(-mx);if(!KINDS[edit.kind].light)edit.dim=false;if(edit.kind==='camera'&&edit.src==='iHost')edit.src='Imou';if(edit.kind==='camera'&&!CAMLIST&&camYetki())setTimeout(loadCamList,0);else if(old==='camera'&&edit.kind!=='camera'&&edit.src==='Imou')edit.src='iHost';
     if(!edit.name.trim()||Object.values(KINDS).some(k=>k.label===edit.name))edit.name=KINDS[edit.kind].label;formErr='';renderSettings();return}
   if(t.dataset.edit){startEdit(t.dataset.edit);$('#picker').scrollIntoView({behavior:'smooth',block:'nearest'});return}
-  if(t.dataset.scene){runScene(SCENES.find(s=>s.id===t.dataset.scene));return}
+  if(t.dataset.scene){runScene(getScenes().find(s=>s.id===t.dataset.scene));return}
   switch(t.id){
     case 'addBtn':startAdd();break;
     case 'fSave':submitEdit();break;
@@ -1240,6 +1289,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){closePop();if(camWi
 
 function setAllLights(on){let n=0;accList().forEach(a=>{if(KINDS[a.kind]?.light&&!!a.on!==on){n++;patchAcc(a.id,{on})}});
   toast(n?(on?`Kat ${FLOOR}: ${n} ışık açıldı`:`Kat ${FLOOR}: ${n} ışık kapatıldı`):(on?`Kat ${FLOOR} ışıkları zaten açık`:`Kat ${FLOOR} ışıkları zaten kapalı`))}
+$('#modEdit').addEventListener('click',modEditor);
 $('#allOn').addEventListener('click',()=>setAllLights(true));
 $('#allOff').addEventListener('click',()=>setAllLights(false));
 /* ---------- Katlar ---------- */
@@ -1566,10 +1616,12 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
     if(v&&!first)toast('Işıkları yanlarındaki yuvarlak düğmelerden aç/kapa');
     if(v&&!running){running=true;requestAnimationFrame(tick)}}
   btn.onclick=()=>set(!on);
+  const isInfo=a=>a.kind==='camera'||a.kind==='climate'||a.kind==='sensor';
+  const info=(a,ev)=>{if(a.kind==='camera')openCam(a.id);else if(BAL.sheet)BAL.sheet(a);else if(a.kind==='climate')openPop(a,ev);else toast(a.name+': henüz veri yok')};
   function mark(id){let m=marks[id];if(m)return m;
     const b=document.createElement('button');b.type='button';b.className='bal-m';
     const l=document.createElement('div');l.className='bal-l';l.setAttribute('aria-hidden','true');
-    const mm={b,l,st:null,fn:null};b.onclick=()=>{if(EDIT)return;mm.fn?mm.fn():flip(id)};ov.insertBefore(b,more);ov.insertBefore(l,more);return marks[id]=mm}
+    const mm={b,l,st:null,fn:null};b.onclick=ev=>{if(EDIT)return;mm.fn?mm.fn(ev):flip(id)};ov.insertBefore(b,more);ov.insertBefore(l,more);return marks[id]=mm}
   const devNa=a=>{if(!IHLIST||!a.extId||(a.src!=='iHost'&&a.src!=='Meross'))return false;const c=IHLIST.find(x=>x.id===a.extId);return !!c&&c.cevrimici===false};
   function paint(m,o){const st=JSON.stringify(o);if(m.st===st)return;m.st=st;const b=m.b;
     b.classList.toggle('on',o.on===1);b.classList.toggle('part',o.on===.5);b.classList.toggle('grp',!!o.n);b.classList.toggle('pend',!!o.pend);b.classList.toggle('na',!!o.na);
@@ -1583,9 +1635,9 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
   function tickO(){if(!on){running=false;return}requestAnimationFrame(tick);
     if(!T||!T.camera||!v||stage.offsetParent===null)return;
     const W=stage.clientWidth,H=stage.clientHeight,cam=T.camera;cam.updateMatrixWorld();
-    let k=W+'|'+H+'|'+FLOOR+'|'+listOpen+'|'+[...BAL.exp].join()+'|'+cam.matrixWorld.elements.map(e=>e.toFixed(3)).join(',');
+    let k=W+'|'+H+'|'+FLOOR+'|'+listOpen+'|'+EDIT+'|'+JSON.stringify(custom)+'|'+[...BAL.exp].join()+'|'+cam.matrixWorld.elements.map(e=>e.toFixed(3)).join(',');
     const lights=[],obst=[];
-    (T.HIT||[]).forEach(h=>{const a=ACC[h.userData.id];if(!a||!accF(a)||!KINDS[a.kind])return;if(KINDS[a.kind].light)lights.push(h);else obst.push(h)});
+    (T.HIT||[]).forEach(h=>{const a=ACC[h.userData.id];if(!a||!accF(a)||!KINDS[a.kind])return;lights.push(h)});
     lights.forEach(h=>{const a=ACC[h.userData.id];k+='|'+a.id+(a.on?1:0)+a.name+a.bri+(a.room||'')});k+=JSON.stringify(DEVST)+(IHLIST?IHLIST.length+IHLIST.filter(c=>c.cevrimici===false).map(c=>c.id).join():'');
     if(k===sig)return;sig=k;
     const proj=h=>{h.getWorldPosition(v);v.project(cam);return v.z>1?null:{x:(v.x+1)/2*W,y:(1-v.y)/2*H}};
@@ -1595,7 +1647,7 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
     let P=Object.keys(groups).sort().map(id=>{const g=groups[id];return{id,ids:[id],x:g.x/g.n,y:g.y/g.n}});
     const byRoom={};P.forEach(p=>{const r=ACC[p.id].room;if(r&&KINDS[ACC[p.id].kind].light)(byRoom[r]=byRoom[r]||[]).push(p)});
     for(const r in byRoom){const L=byRoom[r];if(L.length<2)continue;const cx=L.reduce((t,p)=>t+p.x,0)/L.length,cy=L.reduce((t,p)=>t+p.y,0)/L.length;
-      if(L.every(p=>Math.hypot(p.x-cx,p.y-cy)<48)&&!BAL.exp.has(r)){P=P.filter(p=>!L.includes(p));P.push({id:'room:'+r,ids:L.map(p=>p.id),room:r,x:cx,y:cy})}}
+      if(L.every(p=>Math.hypot(p.x-cx,p.y-cy)<48)&&!BAL.exp.has(r)&&!(T.getZoom&&T.getZoom()<0.62)){P=P.filter(p=>!L.includes(p));P.push({id:'room:'+r,ids:L.map(p=>p.id),room:r,x:cx,y:cy})}}
     P.sort((a,b)=>a.id<b.id?-1:1);
     Object.values(groups).forEach(g=>busy.push({x:g.x/g.n,y:g.y/g.n,w:14,h:14}));
     const DIR=[[-1,-1],[1,-1],[-1,0],[1,0],[0,-1],[-1,1],[1,1],[0,1]],DIST=[60,95,135];
@@ -1612,14 +1664,15 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
       const wl=Math.min(140,a.name.length*6.2+8);const pref=p.x<W/2?0:1;
       const cand=[];const prev=pos[p.id];if(prev)cand.push(prev);
       DIST.forEach(r=>DIR.forEach((dv,i)=>{const di=(i+pref)%DIR.length;cand.push({di:(pref&&i<2)?1-i:i,r})}));
-      let got=null;for(const c of cand){const dv=DIR[c.di],n=Math.hypot(dv[0],dv[1]);const x=p.x+dv[0]/n*c.r,y=p.y+dv[1]/n*c.r;
+      let got=null;const cu=custom[p.id];if(cu){v.set(cu.x,0,cu.z);v.project(cam);const cx=(v.x+1)/2*W,cy=(1-v.y)/2*H;if(cx>30&&cx<W-30&&cy>30&&cy<H-44)got={x:cx,y:cy,c:null}}
+      if(!got)for(const c of cand){const dv=DIR[c.di],n=Math.hypot(dv[0],dv[1]);const x=p.x+dv[0]/n*c.r,y=p.y+dv[1]/n*c.r;
         if(fits(x,y,wl)){got={x,y,c:{di:c.di,r:c.r}};break}}
       if(!got){over.push(...p.ids);delete pos[p.id];return}
-      pos[p.id]=got.c;seen[p.id]=1;const L=got.x-Math.max(26,wl/2),R=got.x+Math.max(26,wl/2);placed.push({L,R,T:got.y-26,B:got.y+40});
-      const m=mark(p.id);paint(m,o);m.fn=grp?()=>{BAL.exp.add(p.room);sig='';toast(a.name+': ışıklar ayrıldı. Boş yere dokununca toplanır')}:null;
+      if(got.c)pos[p.id]=got.c;seen[p.id]=1;const L=got.x-Math.max(26,wl/2),R=got.x+Math.max(26,wl/2);placed.push({L,R,T:got.y-26,B:got.y+40});
+      const m=mark(p.id);paint(m,o);m.fn=grp?()=>{BAL.exp.add(p.room);sig='';toast(a.name+': ışıklar ayrıldı. Boş yere dokununca toplanır')}:(isInfo(a0)?ev=>info(a0,ev):null);
       const dx=got.x-p.x,dy=got.y-p.y,len=Math.hypot(dx,dy)||1,ex=got.x-dx/len*23,ey=got.y-dy/len*23;
       const seg=`M${p.x.toFixed(1)},${p.y.toFixed(1)}L${ex.toFixed(1)},${ey.toFixed(1)}`;if(a.on)dOn+=seg;else d+=seg;
-      m.b.style.left=got.x+'px';m.b.style.top=got.y+'px';m.l.style.left=got.x+'px';m.l.style.top=(got.y+24)+'px'});
+      m.b.style.left=got.x+'px';m.b.style.top=got.y+'px';m.l.style.left=got.x+'px';m.l.style.top=(got.y+24)+'px';m.b.classList.toggle('edt',EDIT);m.b.dataset.id=p.id});
     for(const id in marks)if(!seen[id]){marks[id].b.remove();marks[id].l.remove();delete marks[id]}
     const ord=Object.keys(marks).sort((x,y)=>{const a=marks[x].b,b=marks[y].b;return(parseFloat(a.style.top)-parseFloat(b.style.top))||(parseFloat(a.style.left)-parseFloat(b.style.left))});
     if(ord.join()!==(tick.ord||'')){tick.ord=ord.join();if(!ov.contains(document.activeElement))ord.forEach(id=>{ov.insertBefore(marks[id].b,more);ov.insertBefore(marks[id].l,more)})}
@@ -1628,7 +1681,7 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
     more.hidden=!over.length;if(over.length){more.textContent=`+${over.length} ışık`;more.style.top=top+'px';more.setAttribute('aria-expanded',String(listOpen))}
     if(!over.length)listOpen=false;list.hidden=!listOpen;
     if(listOpen){list.style.top=(top+44)+'px';list.innerHTML='';over.forEach(id=>{const a=ACC[id],b=document.createElement('button');b.type='button';b.className=a.on?'on':'';
-      b.setAttribute('aria-pressed',String(!!a.on));b.innerHTML=icon(a.kind,'currentColor',18)+'<span></span>';b.lastChild.textContent=a.name;b.onclick=()=>a.kind==='camera'?openCam(id):(a.kind==='climate'||a.kind==='sensor')?(BAL.sheet&&BAL.sheet(a)):flip(id);list.appendChild(b)})}
+      b.setAttribute('aria-pressed',String(!!a.on));b.innerHTML=icon(a.kind,'currentColor',18)+'<span></span>';b.lastChild.textContent=a.name;b.onclick=ev=>isInfo(a)?info(a,ev):flip(id);list.appendChild(b)})}
   }
   function tickP(){if(!on){running=false;return}requestAnimationFrame(tick);
     if(!T||!T.camera||!v||stage.offsetParent===null)return;
@@ -1675,7 +1728,7 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
         for(const c of cand){const q=posC(c);if(fits(q.x,q.y,c.o&&c.sd>=2?Math.min(wl,64):wl)){got={x:q.x,y:q.y,c:c.o?{o:1,sd:c.sd,t:c.t}:{o:0,r:c.r,a:c.a}};break}}}
       if(!got){over.push(...p.ids);delete pos[p.id];return}
       if(got.c)pos[p.id]=got.c;seen[p.id]=1;const L=got.x-Math.max(26,wl/2),R=got.x+Math.max(26,wl/2);placed.push({L,R,T:got.y-26,B:got.y+40});
-      const m=mark(p.id);paint(m,o);m.fn=grp?()=>{BAL.exp.add(p.room);sig='';toast(a.name+': ışıklar ayrıldı. Boş yere dokununca toplanır')}:(a0.kind==='camera'?()=>openCam(a0.id):(a0.kind==='climate'||a0.kind==='sensor')?()=>BAL.sheet&&BAL.sheet(a0):null);
+      const m=mark(p.id);paint(m,o);m.fn=grp?()=>{BAL.exp.add(p.room);sig='';toast(a.name+': ışıklar ayrıldı. Boş yere dokununca toplanır')}:(isInfo(a0)?ev=>info(a0,ev):null);
       const dx=got.x-p.x,dy=got.y-p.y,len=Math.hypot(dx,dy)||1,ex=got.x-dx/len*23,ey=got.y-dy/len*23;
       const seg=`M${p.x.toFixed(1)},${p.y.toFixed(1)}L${ex.toFixed(1)},${ey.toFixed(1)}`;if(a.on)dOn+=seg;else d+=seg;
       m.b.style.left=got.x+'px';m.b.style.top=got.y+'px';m.l.style.left=got.x+'px';m.l.style.top=(got.y+24)+'px';m.l.style.maxWidth='110px';m.b.classList.toggle('edt',EDIT);m.b.dataset.id=p.id});
@@ -1687,11 +1740,11 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
     more.hidden=!over.length;if(over.length){more.textContent=`+${over.length} ışık`;more.style.top=top+'px';more.setAttribute('aria-expanded',String(listOpen))}
     if(!over.length)listOpen=false;list.hidden=!listOpen;
     if(listOpen){list.style.top=(top+44)+'px';list.innerHTML='';over.forEach(id=>{const a=ACC[id],b=document.createElement('button');b.type='button';b.className=a.on?'on':'';
-      b.setAttribute('aria-pressed',String(!!a.on));b.innerHTML=icon(a.kind,'currentColor',18)+'<span></span>';b.lastChild.textContent=a.name;b.onclick=()=>a.kind==='camera'?openCam(id):(a.kind==='climate'||a.kind==='sensor')?(BAL.sheet&&BAL.sheet(a)):flip(id);list.appendChild(b)})}
+      b.setAttribute('aria-pressed',String(!!a.on));b.innerHTML=icon(a.kind,'currentColor',18)+'<span></span>';b.lastChild.textContent=a.name;b.onclick=ev=>isInfo(a)?info(a,ev):flip(id);list.appendChild(b)})}
   }
   function tick(){PH?tickP():tickO()}
 
-    if(PH){
+  {
   const mk=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
   const ctl=stage.querySelector('.stage-ctrl')||stage;
   const eb=mk('button','bal-t','<span>Balonları düzenle</span>');eb.type='button';eb.setAttribute('aria-pressed','false');ctl.appendChild(eb);
@@ -1704,6 +1757,9 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
   ov.addEventListener('pointermove',e=>{if(!EDIT||!drag)return;const r=stage.getBoundingClientRect();n2.set(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);
     rc.setFromCamera(n2,T.camera);if(rc.ray.intersectPlane(g0,pt)){custom[drag]={x:pt.x,z:pt.z};sig=''}});
   ov.addEventListener('pointerup',()=>{if(drag)saveC();drag=null});ov.addEventListener('pointercancel',()=>{drag=null});
+  }
+  if(PH){
+  const mk=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
   const hint=document.querySelector('.hint');if(hint){const vv=document.getElementById('ver');hint.textContent='Tek parmak: kaydır · İki parmak: yakınlaş · Boş yere çift dokun: sıfırla · Balon: aç / kapa · Oda balonu: ışıkları ayır · ';if(vv)hint.appendChild(vv)}
   /* ---- Liste modu ---- */
   const view=document.getElementById('view-kontrol'),wrap=view.querySelector('.stage-wrap');
@@ -1718,17 +1774,6 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
     return accAll().filter(a=>k==='_'?!ROOMS[a.room]:a.room===k).sort((a,b)=>{const i=o.indexOf(a.id),j=o.indexOf(b.id);return (i<0?1e3:i)-(j<0?1e3:j)})}
   const roomKeys=()=>{const all=accAll(),ks=Object.keys(ROOMS).filter(k=>all.some(a=>a.room===k));if(all.some(a=>!ROOMS[a.room]))ks.push('_');return ks};
   const rn=k=>k==='_'?'Diğer':ROOMS[k].name;
-  const GR='<defs><radialGradient id="phgb" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#fffbe8"/><stop offset="1" stop-color="#ffd27a"/></radialGradient><radialGradient id="phgz" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#eef1fb"/><stop offset="1" stop-color="#a9b1d1"/></radialGradient></defs>';
-  const OBJ=(k,on)=>{const g=on?'url(#phgb)':'url(#phgz)';
-    if(k==='lamp')return `<svg viewBox="0 0 64 64">${GR}${on?'<polygon points="18,26 46,26 54,58 10,58" fill="rgba(255,205,130,.28)"/>':''}<polygon points="22,8 42,8 49,26 15,26" fill="${on?'#ffdca4':'#cdd2ec'}" stroke="#b9a37a"/><rect x="30.5" y="26" width="3" height="28" fill="#c7ccdf"/><ellipse cx="32" cy="55" rx="11" ry="3" fill="#aab1c8"/></svg>`;
-    if(k==='pendant')return `<svg viewBox="0 0 64 64">${GR}<rect x="31.5" y="0" width="1.5" height="16" fill="#8f96ad"/><path d="M14 38 Q32 8 50 38Z" fill="${on?'#ffdca4':'#cdd2ec'}" stroke="#b9a37a"/><circle cx="32" cy="40" r="6" fill="${g}"/></svg>`;
-    if(k==='plug')return `<svg viewBox="0 0 64 64"><rect x="16" y="22" width="32" height="26" rx="9" fill="#eef0f8"/><rect x="24" y="10" width="5" height="14" rx="2" fill="#b9bfd6"/><rect x="35" y="10" width="5" height="14" rx="2" fill="#b9bfd6"/><circle cx="32" cy="35" r="4" fill="${on?'#36d39a':'#9aa3c7'}"/></svg>`;
-    if(k==='sensor')return `<svg viewBox="0 0 64 64"><circle cx="32" cy="34" r="16" fill="#eef0f8"/><circle cx="32" cy="34" r="6" fill="#4fc3ff"/><path d="M12 34a20 20 0 0 1 8-16M52 34a20 20 0 0 0-8-16" stroke="#7fd4ff" stroke-width="2" fill="none"/></svg>`;
-    if(k==='strip')return `<svg viewBox="0 0 64 64">${GR}<rect x="6" y="28" width="52" height="9" rx="4.5" fill="${on?'#ffe3a0':'#c3c9e4'}"/><rect x="6" y="37" width="52" height="3" rx="1.5" fill="${on?'rgba(255,200,110,.5)':'rgba(150,158,200,.3)'}"/></svg>`;
-    if(k==='cover')return `<svg viewBox="0 0 64 64"><rect x="8" y="6" width="48" height="3" rx="1.5" fill="#9aa3c7"/><path d="M10 9h${on?10:22}v44c-5-6-5-34 0-44z" fill="#c9a8ff"/><path d="M54 9h-${on?10:22}v44c5-6 5-34 0-44z" fill="#b58cf5"/></svg>`;
-    if(k==='climate')return `<svg viewBox="0 0 64 64"><circle cx="32" cy="34" r="19" fill="#eef0f8"/><circle cx="32" cy="34" r="13" fill="#2a3160"/><text x="32" y="39" text-anchor="middle" font-size="13" font-weight="700" fill="${on?'#ff8a5b':'#36d39a'}">°</text></svg>`;
-    if(k==='camera')return `<svg viewBox="0 0 64 64"><rect x="29" y="4" width="6" height="14" fill="#c7ccdf"/><circle cx="32" cy="30" r="15" fill="#eef0f8"/><circle cx="36" cy="32" r="7" fill="#2a3160"/><circle cx="38" cy="30" r="2" fill="#4fc3ff"/></svg>`;
-    return `<svg viewBox="0 0 64 64">${GR}<circle cx="32" cy="26" r="17" fill="${g}" stroke="${on?'#ffe6a8':'#8e97c9'}"/><rect x="24" y="40" width="16" height="6" rx="2" fill="#aeb4c8"/><rect x="26" y="46" width="12" height="7" rx="2" fill="#8f96ad"/></svg>`};
   const stTxt=(a,on)=>NOTOG.test(a.kind)?(a.kind==='camera'?'Canlı görüntü':a.kind==='climate'?'Termostat':'veri yok'):on?'Açık':'Kapalı';
   function refreshCounts(){LP.querySelectorAll('.ph-rh small[data-k]').forEach(x=>{const T2=accOf(x.dataset.k).filter(TOG),n=T2.filter(a=>a.on).length;x.textContent=T2.length?n+' / '+T2.length+' açık':''})}
   function setMode(ls,save){LM=ls;wrap.style.display=ls?'none':'';LP.hidden=!ls;
@@ -1749,7 +1794,7 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
         if(!t||!a.dim)return;if(Math.abs(e.clientX-sx)>10)mv=true;if(mv){const r=b.getBoundingClientRect();cur=Math.max(5,Math.min(100,Math.round((e.clientX-r.left)/r.width*20)*5));paint()}});
       b.addEventListener('pointerup',()=>{clearTimeout(lp);lp=null;if(long){long=false;return}if(sx==null)return;const was=mv;sx=null;busy=false;lastLocal=Date.now();
         if(was){patchAcc(a.id,a.on?{bri:cur}:{on:true,bri:cur});paint();return}
-        if(!t){if(a.kind==='camera'){setMode(false,false);setTimeout(()=>openCam(a.id),150)}else if(a.kind==='climate')toast('Termostat ayarlardan yönetilir');else toast((a.name||'')+': henüz veri yok');return}
+        if(!t){if(a.kind==='camera')openCam(a.id);else if(a.kind==='climate')toast('Termostat ayarlardan yönetilir');else toast((a.name||'')+': henüz veri yok');return}
         const now=!a.on;patchAcc(a.id,{on:now});b.classList.remove('fx');void b.offsetWidth;b.classList.add('fx');paint();refreshCounts()});
       b.addEventListener('pointercancel',()=>{clearTimeout(lp);lp=null;sx=null;busy=false});
       gt.appendChild(b)});return gt}
@@ -1775,7 +1820,7 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
   document.addEventListener('pointerdown',e=>{if(!menu.hidden&&!menu.contains(e.target)&&!e.target.closest('.floors'))hideM()});
   try{if(localStorage.getItem('aksongur-mod')==='ls')setMode(true,false)}catch(e){}
 
-  const c0=stage.querySelector('.stage-ctrl');if(c0)stage.after(c0);
+  const c0=stage.querySelector('.stage-ctrl');if(c0)stage.after(c0);document.body.appendChild(document.getElementById('camWin'));
   const bd=mk('div','ph-bd'),sh=mk('div','ph-sheet');bd.hidden=sh.hidden=true;document.body.append(bd,sh);
   let shA=null,tT=null;
   const closeS=()=>{bd.hidden=sh.hidden=true;shA=null;if(LM)renderList()};bd.onclick=closeS;
@@ -1795,13 +1840,13 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
     if(k==='tog'){patchAcc(a.id,{on:!a.on});drawS()}
     else if(k==='cl'){patchAcc(a.id,{on:a.on===false});drawS()}
     else if(k[0]==='d'){const v=Math.max(5,Math.min(30,(a.setT??22)+ +k.slice(1)));a.setT=v;drawS();clearTimeout(tT);tT=setTimeout(()=>patchAcc(a.id,{setT:v}),500)}
-    else if(k==='cam'){closeS();setMode(false,false);setTimeout(()=>openCam(a.id),150)}
+    else if(k==='cam'){closeS();openCam(a.id)}
     else if(k==='fav'){FAV=FAV.includes(a.id)?FAV.filter(x=>x!==a.id):FAV.concat(a.id);sv(FAVK,FAV);drawS()}
     else if(k.slice(0,2)==='mv'){const rk=ROOMS[a.room]?a.room:'_',ids=accOf(rk).map(x=>x.id),i=ids.indexOf(a.id),j=i+ +k.slice(2);if(i>=0&&j>=0&&j<ids.length){ids.splice(j,0,ids.splice(i,1)[0]);ORD[rk]=ids;sv(ORDK,ORD);toast(j<i?'Öne alındı':'Sona alındı')}}};
   /* sahneler + geri al */
   const sc=mk('div','ph-sc');sc.hidden=true;const mb=mk('button','','Modlar ▾');mb.id='phModBtn';mb.type='button';mb.setAttribute('aria-expanded','false');
-  SCENES.forEach(x=>{const b=mk('button','',''); b.style.setProperty('--sc',x.c);b.textContent=x.name;b.onclick=()=>{sc.hidden=true;mb.setAttribute('aria-expanded','false');runSc(x)};sc.appendChild(b)});
-  mb.onclick=()=>{sc.hidden=!sc.hidden;mb.setAttribute('aria-expanded',String(!sc.hidden))};view.append(mb,sc);
+  const fillSc=()=>{sc.innerHTML='';getScenes().forEach(x=>{const b=mk('button','',''); b.style.setProperty('--sc',x.c);b.textContent=x.name;b.onclick=()=>{sc.hidden=true;mb.setAttribute('aria-expanded','false');runSc(x)};sc.appendChild(b)})};
+  mb.onclick=()=>{if(sc.hidden)fillSc();sc.hidden=!sc.hidden;mb.setAttribute('aria-expanded',String(!sc.hidden))};view.append(mb,sc);
   document.addEventListener('pointerdown',e=>{if(!sc.hidden&&!sc.contains(e.target)&&e.target!==mb){sc.hidden=true;mb.setAttribute('aria-expanded','false')}});
   const un=mk('div','ph-undo','<span></span><button>Geri al</button>');un.hidden=true;document.body.appendChild(un);let snap=null,uT=null;
   const DEF={on:false,bri:100,setT:22};
