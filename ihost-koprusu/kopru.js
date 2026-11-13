@@ -327,9 +327,10 @@ let LGC = null, LGS = { guc: null, ses: null, sessiz: null, istem: false, hata: 
 function lgBaslat() {
   if (!LG.ip || LGC) return;
   let LGTV; try { LGTV = require('lgtv2'); LGTV = LGTV.default || LGTV; } catch (e) { LGS.hata = 'lgtv2 paketi yüklenemedi (Node 20.19+ gerekir)'; console.log(LGS.hata, e.message); return; }
+  try { console.log('lgtv2 sürümü', require('lgtv2/package.json').version); } catch { }
   LGC = new LGTV(Object.assign({ host: LG.ip, keyFile: process.env.LG_ANAHTAR || '/data/lg-key', reconnect: 5000 }, LG.mac ? { mac: LG.mac } : {}));
   LGC.on('prompt', () => { LGS.istem = true; });
-  LGC.on('error', e => { LGS.hata = String(e && e.message || e).slice(0, 120); });
+  LGC.on('error', e => { LGS.hata = String(e && e.message || e).slice(0, 120); console.log('LG hata:', LGS.hata); });
   LGC.on('close', () => { LGS.guc = null; });
   LGC.on('connect', () => {
     LGS.istem = false; LGS.hata = '';
