@@ -90,6 +90,25 @@ function sadele(c) {
   })];
 }
 
+/* Hareket sensörleri yalnız değişimde bildirir; "son hareket" zamanı için köprü cihaz listesini kendisi de izler */
+const HAREKET_DOSYA = process.env.HAREKET_DOSYA || '/data/hareket.json';
+let SON = {}, sonOnceki = {}, sonKaydetT = 0;
+try { SON = JSON.parse(fs.readFileSync(HAREKET_DOSYA, 'utf8')); } catch { }
+async function cubeListe() {
+  const d = await cube('GET', '/devices');
+  const l = (d.device_list || []).flatMap(sadele);
+  let degisti = false;
+  l.forEach(c => {
+    const sn = c.id.split(':')[0];
+    if (c.hareket === true && sonOnceki[sn] !== true) { SON[sn] = Date.now(); degisti = true; }
+    if (c.hareket !== null && c.hareket !== undefined) sonOnceki[sn] = c.hareket;
+    if (SON[sn]) c.sonHareket = SON[sn];
+  });
+  if (degisti && Date.now() - sonKaydetT > 5000) { sonKaydetT = Date.now(); try { fs.mkdirSync('/data', { recursive: true }); fs.writeFileSync(HAREKET_DOSYA, JSON.stringify(SON)); } catch { } }
+  return l;
+}
+setInterval(() => { if (cubeToken) cubeListe().catch(() => { }); }, 8000);
+
 // ---- Meross: bulut hesabıyla bir kez giriş (anahtar + cihaz listesi), sonra ev ağında yerel HTTP ile kontrol.
 // Şifre saklanmaz; /data/meross.json yalnızca anahtar, belirteç ve cihazları tutar.
 const md5 = s => require('crypto').createHash('md5').update(s).digest('hex');
@@ -347,7 +366,7 @@ http.createServer(async (req, res) => {
     }
     if (yol === '/cihazlar' && req.method === 'GET') {
       const [ih, mr, cs] = await Promise.all([
-        cubeToken ? cube('GET', '/devices').then(d => (d.device_list || []).flatMap(sadele)) : Promise.resolve([]),
+        cubeToken ? cubeListe() : Promise.resolve([]),
         mrListe().catch(() => []), csListe().catch(() => [])]);
       return yanit(res, 200, { cihazlar: ih.concat(mr, cs), meross: { bagli: !!MR.key, cihaz: MR.cihazlar.length }, cosa: { bagli: !!CS.eposta, cihaz: CS.cihazlar.length } });
     }

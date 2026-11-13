@@ -532,7 +532,9 @@ const KINDS={
   camera:{label:'Kamera',n:1,c:'#ff6b81',ico:'M3 7h11v10H3zM14 10.5l7-3.5v10l-7-3.5z'}
 };
 const SRC=['iHost','Meross','Cosa','Homebridge','Imou','Diğer'];const BRG=s=>s==='iHost'||s==='Meross'||s==='Cosa';
-const sensTxt=a=>a.det===true?'Hareket var':a.det===false?'Hareket yok':'Veri yok';
+const hhmm=t=>{const d=new Date(t),b=new Date(),z=x=>String(x).padStart(2,'0'),h=z(d.getHours())+':'+z(d.getMinutes());
+  return d.toDateString()===b.toDateString()?h:new Date(b-864e5).toDateString()===d.toDateString()?'dün '+h:z(d.getDate())+'.'+z(d.getMonth()+1)+' '+h};
+const sensTxt=a=>a.det===true?'Hareket var':a.sH?'Son hareket '+hhmm(a.sH):a.det===false?'Hareket yok':(a.extId&&BRG(a.src)?'Hareket bekleniyor':'Veri yok');
 const sensDet=a=>[sensTxt(a)].concat(typeof a.sT==='number'?[a.sT.toFixed(1).replace('.',',')+'°']:[],typeof a.sN==='number'?['%'+Math.round(a.sN)]:[]).join(' · ');
 const srcCls=s=>s==='iHost'?'ihost':s==='Meross'?'meross':s==='Cosa'?'cosa':s==='Homebridge'?'hb':s==='Imou'?'imou':'ex';
 const GR='<defs><radialGradient id="phgb" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#fffbe8"/><stop offset="1" stop-color="#ffd27a"/></radialGradient><radialGradient id="phgz" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#eef1fb"/><stop offset="1" stop-color="#a9b1d1"/></radialGradient></defs>';
@@ -1574,7 +1576,7 @@ function ihostDurumAl(){if(!IHLIST)return;let n=0;
     if(a.kind==='climate'&&c.kaynak==='Cosa'){if(typeof c.sicaklik==='number'&&a.curT!==c.sicaklik){a.curT=c.sicaklik;n++}
       if(typeof c.hedef==='number'&&a.setT!==c.hedef&&!DEVST[a.id]&&Date.now()-(a._st||0)>20000){a.setT=c.hedef;n++}}
     if(a.kind==='sensor'){const d=typeof c.hareket==='boolean'?c.hareket:null;
-      if(a.det!==d){a.det=d;n++}if(d!==null&&!!a.on!==d){a.on=d;n++}
+      if(a.det!==d){a.det=d;n++}if(a.sH!==c.sonHareket){a.sH=c.sonHareket;n++}if(d!==null&&!!a.on!==d){a.on=d;n++}
       const t=typeof c.sicaklik==='number'?c.sicaklik:undefined,h=typeof c.nem==='number'?c.nem:undefined;
       if(a.sT!==t){a.sT=t;n++}if(a.sN!==h){a.sN=h;n++}return}
     if(c.acik==null)return;
@@ -1855,7 +1857,7 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
     if(t&&a.dim)h+='<div class="ph-sh-sl"><input type="range" min="5" max="100" step="5" value="'+(a.bri??100)+'" aria-label="Parlaklık"><b>'+(a.bri??100)+'%</b></div>';
     if(a.kind==='climate'){const sT=a.setT??22;h+='<div class="ph-sh-t"><button data-a="d-0.5" aria-label="Azalt">−</button><b>'+fx2(sT)+'°</b><button data-a="d0.5" aria-label="Artır">+</button></div>'+(typeof a.curT==='number'?'<p class="ph-sh-n">Şu an '+fx2(a.curT)+'°</p>':'')+'<button class="ph-sh-b" data-a="cl">'+(a.on!==false?'Kapat':'Aç')+'</button>'}
     if(a.kind==='camera')h+='<button class="ph-sh-b" data-a="cam">Canlı görüntüyü aç</button>';
-    if(a.kind==='sensor')h+='<p class="ph-sh-n">'+(a.det==null&&typeof a.sT!=='number'?'Henüz veri yok':esc(sensDet(a)))+'</p>';
+    if(a.kind==='sensor')h+='<p class="ph-sh-n">'+esc(sensDet(a))+'</p>';
     h+='<div class="ph-sh-r"><button data-a="fav">'+(isF?'★ Favoriden çıkar':'☆ Favori')+'</button><button data-a="mv-1">← Önce</button><button data-a="mv1">Sonra →</button></div><div class="ph-sh-r"><button data-a="x">Kapat</button></div>';
     sh.innerHTML=h;sh.querySelector('strong').textContent=a.name||'';
     const r=sh.querySelector('input[type=range]');if(r){r.oninput=()=>{r.nextSibling.textContent=r.value+'%'};r.onchange=()=>{lastLocal=Date.now();patchAcc(a.id,{on:true,bri:+r.value});drawS()}}}
