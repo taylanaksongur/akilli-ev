@@ -221,6 +221,62 @@ async function mrKomut(id, acik) {
   }
 }
 
+// ---- Cosa akıllı termostat: resmi arayüz yok; Cosa uygulamasının kullandığı bulut arayüzü (kiwi.cosa.com.tr).
+// Giriş bilgisi yalnızca iHost'un /data/cosa.json dosyasında durur (belirteç süresi dolunca otomatik yeniden giriş).
+const COSA = process.env.COSA_ADRES || 'https://kiwi.cosa.com.tr/api', COSA_DOSYA = process.env.COSA_DOSYA || '/data/cosa.json';
+let CS = { eposta: '', sifre: '', token: '', cihazlar: [] };
+try { CS = Object.assign(CS, JSON.parse(fs.readFileSync(COSA_DOSYA, 'utf8'))); } catch { }
+const csKaydet = () => { try { fs.mkdirSync('/data', { recursive: true }); fs.writeFileSync(COSA_DOSYA, JSON.stringify(CS), { mode: 0o600 }); } catch { } };
+async function csAl(yol, govde, token) {
+  const r = await fetch(COSA + yol, { method: govde ? 'POST' : 'GET', signal: AbortSignal.timeout(8000),
+    headers: Object.assign({ 'Content-Type': 'application/json', Accept: 'application/json' }, token ? { authToken: token } : {}),
+    body: govde ? JSON.stringify(govde) : undefined });
+  const j = await r.json().catch(() => ({}));
+  return { durum: r.status, j };
+}
+async function csGiris() {
+  if (!CS.eposta || !CS.sifre) throw Object.assign(new Error('Cosa bağlı değil'), { durum: 409 });
+  const { durum, j } = await csAl('/users/login', { email: CS.eposta, password: CS.sifre });
+  if (!j.authToken) throw Object.assign(new Error('Cosa girişi başarısız' + (durum ? ' (' + durum + ')' : '')), { durum: 401 });
+  CS.token = j.authToken; csKaydet(); return CS.token;
+}
+async function csIstek(yol, govde, tekrar = true) {
+  if (!CS.token) await csGiris();
+  const { durum, j } = await csAl(yol, govde, CS.token);
+  if ((durum === 401 || durum === 403) && tekrar) { CS.token = ''; await csGiris(); return csIstek(yol, govde, false); }
+  if (durum >= 400) throw Object.assign(new Error('Cosa hatası ' + durum), { durum: 502 });
+  return j;
+}
+async function csBaglan(b) {
+  CS = { eposta: String(b.eposta || '').trim(), sifre: String(b.sifre || ''), token: '', cihazlar: [] };
+  await csGiris();
+  const j = await csIstek('/endpoints/getEndpoints');
+  CS.cihazlar = (j.endpoints || []).map(e => ({ id: e.id, ad: e.name }));
+  csKaydet();
+  return { cihaz: CS.cihazlar.length };
+}
+async function csListe() {
+  if (!CS.eposta) return [];
+  return Promise.all(CS.cihazlar.map(async c => {
+    let e = null;
+    try { e = (await csIstek('/endpoints/getEndpoint', { endpoint: c.id })).endpoint; } catch { }
+    const mod = e && (e.mode != null || e.option != null) ? !(e.mode === 'manual' && e.option === 'frozen') : null;
+    return { id: 'cosa:' + c.id, ad: c.ad, tur: 'thermostat', kaynak: 'Cosa', cevrimici: !!e, acik: mod, parlaklik: null, dimmer: false,
+      sicaklik: e && typeof e.temperature === 'number' ? e.temperature : null,
+      hedef: e && typeof e.targetTemperature === 'number' ? e.targetTemperature : null,
+      isitiyor: e ? e.combiState === 'on' : null };
+  }));
+}
+async function csKomut(id, b) {
+  const uid = id.slice(5);
+  if (Number.isFinite(b.hedef)) {
+    const t = Math.max(5, Math.min(30, Math.round(b.hedef * 2) / 2));
+    let onceki = {}; try { onceki = ((await csIstek('/endpoints/getEndpoint', { endpoint: uid })).endpoint || {}).targetTemperatures || {}; } catch { }
+    await csIstek('/endpoints/setTargetTemperatures', { endpoint: uid, targetTemperatures: Object.assign({ away: 5, sleep: 5, custom: 5 }, onceki, { home: t }) });
+  }
+  if (typeof b.acik === 'boolean') await csIstek('/endpoints/setMode', { endpoint: uid, mode: 'manual', option: b.acik ? 'home' : 'frozen' });
+}
+
 // ---- HTTP
 function yanit(res, durum, veri) {
   res.writeHead(durum, {
@@ -257,6 +313,10 @@ http.createServer(async (req, res) => {
       try { fs.mkdirSync('/data', { recursive: true }); fs.writeFileSync(TOKEN_DOSYA, cubeToken); } catch { }
       return yanit(res, 200, { ok: true });
     }
+    if (yol === '/cosa/giris' && req.method === 'POST') {
+      if (k.rol !== 'yonetici') return yanit(res, 403, { hata: 'Yalnız yönetici' });
+      return yanit(res, 200, await csBaglan(await govdeOku(req)));
+    }
     if (yol === '/meross/giris' && req.method === 'POST') {
       if (k.rol !== 'yonetici') return yanit(res, 403, { hata: 'Yalnız yönetici' });
       return yanit(res, 200, await mrBaglan(await govdeOku(req)));
@@ -270,15 +330,19 @@ http.createServer(async (req, res) => {
         cihazlar: MR.cihazlar.map(c => ({ ad: c.ad, ip: c.ip || null })), surum: 4, bulut: !!(mq && mq.connected), bulutBilgi: !!MR.mqttDomain });
     }
     if (yol === '/cihazlar' && req.method === 'GET') {
-      const [ih, mr] = await Promise.all([
+      const [ih, mr, cs] = await Promise.all([
         cubeToken ? cube('GET', '/devices').then(d => (d.device_list || []).flatMap(sadele)) : Promise.resolve([]),
-        mrListe().catch(() => [])]);
-      return yanit(res, 200, { cihazlar: ih.concat(mr), meross: { bagli: !!MR.key, cihaz: MR.cihazlar.length } });
+        mrListe().catch(() => []), csListe().catch(() => [])]);
+      return yanit(res, 200, { cihazlar: ih.concat(mr, cs), meross: { bagli: !!MR.key, cihaz: MR.cihazlar.length }, cosa: { bagli: !!CS.eposta, cihaz: CS.cihazlar.length } });
     }
     const m = yol.match(/^\/cihaz\/([^/]+)$/);
     if (m && req.method === 'POST') {
       const b = await govdeOku(req), state = {};
       const kimlik = decodeURIComponent(m[1]);
+      if (kimlik.startsWith('cosa:')) {
+        if (!Number.isFinite(b.hedef) && typeof b.acik !== 'boolean') return yanit(res, 400, { hata: 'hedef ya da acik gerekli' });
+        await csKomut(kimlik, b); return yanit(res, 200, { ok: true });
+      }
       if (kimlik.startsWith('meross:')) {
         if (typeof b.acik !== 'boolean') return yanit(res, 400, { hata: 'acik gerekli' });
         await mrKomut(kimlik, b.acik); return yanit(res, 200, { ok: true });

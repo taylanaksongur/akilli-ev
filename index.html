@@ -214,6 +214,7 @@ input[type=text],input[type=number],select{width:100%;background:var(--panel-2);
 .acc .act button:hover{background:var(--line);color:var(--fg)}
 .src{font-family:var(--f-mono);font-size:10px;padding:1px 6px;border-radius:6px;margin-left:6px;vertical-align:1px}
 .src.ihost{background:rgba(74,99,255,.25);color:#b8c3ff}
+.src.cosa{background:rgba(255,138,91,.18);color:#ffb08f}
 .src.meross{background:rgba(54,211,154,.18);color:#8ff0c6}
 .src.hb{background:rgba(255,191,94,.18);color:var(--warm)}
 .src.imou{background:rgba(255,107,129,.16);color:#ffb3bf}
@@ -411,6 +412,13 @@ html.ph .hint{font-size:12px}
         <datalist id="ihostList"></datalist>
       </div>
       <div class="card conn">
+        <h3>Cosa termostat bağlantısı</h3>
+        <label class="f" for="cosaMail">Cosa hesabı e-posta<input type="email" id="cosaMail" autocomplete="off" autocapitalize="off" placeholder="Cosa uygulamasındaki e-posta"></label>
+        <label class="f" for="cosaPass">Cosa şifresi<input type="password" id="cosaPass" autocomplete="off" placeholder="iHost köprüsüne iletilir, panelde saklanmaz"></label>
+        <div class="row"><button class="btn" id="cosaBtn">Bağlan</button><span class="note" id="cosaMsg">Bağlı değil</span></div>
+        <p class="note">Cosa’nın resmi bir arayüzü yok; köprü, Cosa bulutuna senin hesabınla bağlanır (şifre yalnızca iHost’un diskinde durur). Termostatı Ayarlar’dan <b>Termostat</b> türünde ekleyip kaynak olarak “Cosa” seç.</p>
+      </div>
+      <div class="card conn">
         <h3>Meross bağlantısı</h3>
         <label class="f" for="merossMail">Meross hesabı e-posta<input type="email" id="merossMail" autocomplete="off" autocapitalize="off" placeholder="Meross uygulamasındaki e-posta"></label>
         <label class="f" for="merossPass">Meross şifresi<input type="password" id="merossPass" autocomplete="off" placeholder="Yalnız bağlanırken kullanılır, saklanmaz"></label>
@@ -523,8 +531,8 @@ const KINDS={
   climate:{label:'Termostat',n:1,c:'#ff8a5b',ico:'M10 4a2 2 0 0 1 4 0v10a4 4 0 1 1-4 0zM12 9v7'},
   camera:{label:'Kamera',n:1,c:'#ff6b81',ico:'M3 7h11v10H3zM14 10.5l7-3.5v10l-7-3.5z'}
 };
-const SRC=['iHost','Meross','Homebridge','Imou','Diğer'];
-const srcCls=s=>s==='iHost'?'ihost':s==='Meross'?'meross':s==='Homebridge'?'hb':s==='Imou'?'imou':'ex';
+const SRC=['iHost','Meross','Cosa','Homebridge','Imou','Diğer'];const BRG=s=>s==='iHost'||s==='Meross'||s==='Cosa';
+const srcCls=s=>s==='iHost'?'ihost':s==='Meross'?'meross':s==='Cosa'?'cosa':s==='Homebridge'?'hb':s==='Imou'?'imou':'ex';
 const GR='<defs><radialGradient id="phgb" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#fffbe8"/><stop offset="1" stop-color="#ffd27a"/></radialGradient><radialGradient id="phgz" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#eef1fb"/><stop offset="1" stop-color="#a9b1d1"/></radialGradient></defs>';
   const OBJ0=(k,on)=>{const g=on?'url(#phgb)':'url(#phgz)';
     if(k==='lamp')return `<svg viewBox="0 0 64 64">${GR}${on?'<polygon points="18,26 46,26 54,58 10,58" fill="rgba(255,205,130,.28)"/>':''}<polygon points="22,8 42,8 49,26 15,26" fill="${on?'#ffdca4':'#cdd2ec'}" stroke="#b9a37a"/><rect x="30.5" y="26" width="3" height="28" fill="#c7ccdf"/><ellipse cx="32" cy="55" rx="11" ry="3" fill="#aab1c8"/></svg>`;
@@ -1197,7 +1205,7 @@ function renderSide(){
         <label class="f" for="fRoom">Oda<select id="fRoom">${Object.keys(ROOMS).map(r=>`<option value="${r}" ${edit.room===r?'selected':''}>${ROOMS[r].name}</option>`).join('')}</select></label>
         <label class="f" for="fSrc">Kaynak<select id="fSrc">${SRC.map(s=>`<option ${edit.src===s?'selected':''}>${s}</option>`).join('')}</select></label>
       </div>
-      <label class="f" for="fExt">${edit.src==='iHost'?'iHost cihazı':edit.src==='Meross'?'Meross cihazı':'Cihaz kimliği'}${(edit.src==='iHost'||edit.src==='Meross')&&ihostSecenek()?`<select id="fExt"><option value="">— Seç —</option>${ihostSecenek()}</select>`:`<input type="text" id="fExt" value="${esc(edit.extId)}" placeholder="${edit.kind==='camera'?'Imou seri numarası (ör. 7F0A1B2C3D4E5)':edit.src==='iHost'?'iHost listesi yükleniyor… (Ayarlar → Bağlantıyı dene)':edit.src==='Meross'?'Önce Ayarlar’da Meross’a bağlan':'Cihaz kimliği'}">`}</label>
+      <label class="f" for="fExt">${edit.src==='iHost'?'iHost cihazı':edit.src==='Meross'?'Meross cihazı':edit.src==='Cosa'?'Cosa termostatı':'Cihaz kimliği'}${(BRG(edit.src))&&ihostSecenek()?`<select id="fExt"><option value="">— Seç —</option>${ihostSecenek()}</select>`:`<input type="text" id="fExt" value="${esc(edit.extId)}" placeholder="${edit.kind==='camera'?'Imou seri numarası (ör. 7F0A1B2C3D4E5)':edit.src==='iHost'?'iHost listesi yükleniyor… (Ayarlar → Bağlantıyı dene)':edit.src==='Meross'?'Önce Ayarlar’da Meross’a bağlan':'Cihaz kimliği'}">`}</label>
       ${edit.kind==='camera'?camPickerHTML():''}
       ${k.light?`<label class="check" for="fDim"><input type="checkbox" id="fDim" ${edit.dim?'checked':''}>Parlaklık ayarlanabilir (dimmer)</label>`:''}
       ${edit.kind==='strip'?`<label class="check" for="fLoop"><input type="checkbox" id="fLoop" ${edit.loop?'checked':''}>Kapalı döngü (son nokta ilkine bağlansın)</label>`:''}
@@ -1261,7 +1269,7 @@ function renderSettings(){
 
 /* ---------- Olaylar ---------- */
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-view],[data-kind],[data-edit],[data-scene],#addBtn,#fSave,#fCancel,#fDel,#fDelYes,#fDelNo,#clearEx,#clearExYes,#ihostBtn,#ihostPair,#merossBtn,#merossTara');if(!t)return;
+  const t=e.target.closest('[data-view],[data-kind],[data-edit],[data-scene],#addBtn,#fSave,#fCancel,#fDel,#fDelYes,#fDelNo,#clearEx,#clearExYes,#ihostBtn,#ihostPair,#merossBtn,#merossTara,#cosaBtn');if(!t)return;
   if(t.dataset.view){if(t.dataset.view==='ayarlar'&&$('#view-ayarlar').hidden){openLock();return}showView(t.dataset.view);return}
   if(t.dataset.kind){readForm();const old=edit.kind;edit.kind=t.dataset.kind;const n=KINDS[edit.kind].n;
     if(n!=='many'&&edit.pts.length>n)edit.pts=edit.pts.slice(-n);const mx=KINDS[edit.kind].max;if(mx&&edit.pts.length>mx)edit.pts=edit.pts.slice(-mx);if(!KINDS[edit.kind].light)edit.dim=false;if(edit.kind==='camera'&&edit.src==='iHost')edit.src='Imou';if(edit.kind==='camera'&&!CAMLIST&&camYetki())setTimeout(loadCamList,0);else if(old==='camera'&&edit.kind!=='camera'&&edit.src==='Imou')edit.src='iHost';
@@ -1281,6 +1289,7 @@ document.addEventListener('click',e=>{
     case 'ihostBtn':ihostKaydet();ihostListe(true);break;
     case 'ihostPair':ihostKaydet();ihostEslestir();break;
     case 'merossBtn':merossBaglan();break;
+    case 'cosaBtn':cosaBaglan();break;
     case 'merossTara':merossTara();break;
   }
 });
@@ -1549,18 +1558,26 @@ async function ihostIstek(yol,govde){
 async function ihostListe(goster){const m=$('#ihostMsg');if(goster)m.textContent='Bağlanıyor…';
   try{const j=await ihostIstek('/cihazlar');IHLIST=j.cihazlar||[];
     $('#ihostList').innerHTML=IHLIST.map(c=>`<option value="${esc(c.id)}">${esc(c.ad)}${c.cevrimici?'':' (çevrim dışı)'}</option>`).join('');
-    const nM=IHLIST.filter(c=>c.kaynak==='Meross').length;m.textContent=`Bağlı · ${IHLIST.length-nM} cihaz`;
+    const nM=IHLIST.filter(c=>c.kaynak==='Meross').length,nC=IHLIST.filter(c=>c.kaynak==='Cosa').length;m.textContent=`Bağlı · ${IHLIST.length-nM-nC} cihaz`;
+    if(j.cosa&&$('#cosaMsg'))$('#cosaMsg').textContent=j.cosa.bagli?`Bağlı · ${nC} termostat`:'Bağlı değil';
     if(j.meross){$('#merossMsg').textContent=j.meross.bagli?`Bağlı · ${nM} kanal`+(j.meross.cihaz&&!nM?' (ağda aranıyor)':''):'Bağlı değil'}ihostDurumAl();
-    if(edit&&(edit.src==='iHost'||edit.src==='Meross')&&!document.querySelector('select#fExt')){readForm();renderSide()}}
+    if(edit&&(BRG(edit.src))&&!document.querySelector('select#fExt')){readForm();renderSide()}}
   catch(e){if(goster)m.textContent=e.message}}
 async function ihostEslestir(){const m=$('#ihostMsg');m.textContent='Eşleştiriliyor…';
   try{await ihostIstek('/eslestir',{});m.textContent='Eşleşti';ihostListe(true)}catch(e){m.textContent=e.message}}
 /* iHost'taki gerçek durumu panele yansıt (yalnız değişenler, sunucuya geri yazmadan) */
 function ihostDurumAl(){if(!IHLIST)return;let n=0;
   for(const id in DEVST){const a=ACC[id],c=a&&IHLIST.find(x=>x.id===a.extId);if(DEVST[id].err&&(!c||c.cevrimici!==false)){delete DEVST[id];n++}}
-  accList().forEach(a=>{if((a.src!=='iHost'&&a.src!=='Meross')||!a.extId)return;const c=IHLIST.find(x=>x.id===a.extId);if(!c||c.acik==null)return;
+  accList().forEach(a=>{if(!BRG(a.src)||!a.extId)return;const c=IHLIST.find(x=>x.id===a.extId);if(!c)return;
+    if(a.kind==='climate'&&c.kaynak==='Cosa'){if(typeof c.sicaklik==='number'&&a.curT!==c.sicaklik){a.curT=c.sicaklik;n++}
+      if(typeof c.hedef==='number'&&a.setT!==c.hedef&&!DEVST[a.id]&&Date.now()-(a._st||0)>20000){a.setT=c.hedef;n++}}
+    if(c.acik==null)return;
     if(!!a.on!==c.acik){a.on=c.acik;n++}if(a.dim&&c.parlaklik!=null&&a.bri!==c.parlaklik){a.bri=c.parlaklik;n++}});
   if(n){afterChange(false)}}
+async function cosaBaglan(){const m=$('#cosaMsg'),e=$('#cosaMail').value.trim(),p=$('#cosaPass').value;
+  if(!e||!p){m.textContent='E-posta ve şifreyi yaz';return}m.textContent='Bağlanıyor…';
+  try{const j=await ihostIstek('/cosa/giris',{eposta:e,sifre:p});$('#cosaPass').value='';m.textContent=`Bağlandı · ${j.cihaz} termostat`;ihostListe(false)}
+  catch(x){$('#cosaPass').value='';m.textContent=x.message}}
 async function merossBaglan(){const m=$('#merossMsg'),e=$('#merossMail').value.trim(),p=$('#merossPass').value,k=$('#merossKod').value.trim();
   if(!e||!p){m.textContent='E-posta ve şifreyi yaz';return}m.textContent='Bağlanıyor…';
   try{const j=await ihostIstek('/meross/giris',{eposta:e,sifre:p,kod:k||undefined});$('#merossPass').value='';$('#merossKod').value='';$('#merossKodL').hidden=true;
@@ -1576,16 +1593,17 @@ function ihostSecenek(){const L=(IHLIST||[]).filter(c=>(c.kaynak||'iHost')===(ed
   const ops=L.map(c=>`<option value="${esc(c.id)}" ${c.id===cur?'selected':''}>${esc(c.ad)}${c.cevrimici?'':' (çevrim dışı)'}</option>`);
   if(cur&&!L.some(c=>c.id===cur))ops.unshift(`<option value="${esc(cur)}" selected>${esc(cur)}</option>`);return ops.join('')}
 document.addEventListener('change',e=>{if(!edit)return;
-  if(e.target.id==='fSrc'){readForm();renderSide();if((edit.src==='iHost'||edit.src==='Meross')&&!IHLIST)ihostListe(false).then(()=>{if(edit)renderSide()})}
-  else if(e.target.id==='fExt'&&e.target.tagName==='SELECT'&&(edit.src==='iHost'||edit.src==='Meross')){const c=(IHLIST||[]).find(x=>x.id===e.target.value);
+  if(e.target.id==='fSrc'){readForm();renderSide();if((BRG(edit.src))&&!IHLIST)ihostListe(false).then(()=>{if(edit)renderSide()})}
+  else if(e.target.id==='fExt'&&e.target.tagName==='SELECT'&&(BRG(edit.src))){const c=(IHLIST||[]).find(x=>x.id===e.target.value);
     readForm();if(c&&(!edit.name.trim()||/^(Işık|Lamba|Spot|Aksesuar)/i.test(edit.name)))edit.name=c.ad.split(' · ').pop();if(c&&c.dimmer)edit.dim=true;renderSide()}});
 /* Paneldeki her açma/kapama ve parlaklık değişikliği iHost'a gider */
 var DEVST={};let errQ=[],errT=0;
 function errToast(name,msg){errQ.push(name);clearTimeout(errT);errT=setTimeout(()=>{toast(errQ.length===1?errQ[0]+': '+msg:`${errQ.length} ışık: ${msg}`);errQ=[]},300)}
 const _patchAcc=patchAcc;
-patchAcc=function(id,patch){const a=ACC[id];const prev=a?{on:a.on,bri:a.bri}:null;const r=_patchAcc(id,patch);
-  if(a&&(a.src==='iHost'||a.src==='Meross')&&a.extId&&ihostHazir()&&('on' in patch||'bri' in patch)){
+patchAcc=function(id,patch){const a=ACC[id];const prev=a?{on:a.on,bri:a.bri,setT:a.setT}:null;if(a&&'setT' in patch)a._st=Date.now();const r=_patchAcc(id,patch);
+  if(a&&(BRG(a.src))&&a.extId&&ihostHazir()&&('on' in patch||'bri' in patch||'setT' in patch)){
     const g={};if('on' in patch)g.acik=!!patch.on;if('bri' in patch&&Number.isFinite(patch.bri))g.parlaklik=patch.bri;
+    if('setT' in patch&&a.src==='Cosa'&&Number.isFinite(patch.setT))g.hedef=patch.setT;if(!Object.keys(g).length)return r;
     DEVST[id]={p:1};ihostIstek('/cihaz/'+encodeURIComponent(a.extId),g).then(()=>{delete DEVST[id]}).catch(e=>{DEVST[id]={err:1};if(prev&&ACC[id])_patchAcc(id,prev);errToast(a.name,e.message)})}
   return r};
 if(ihostHazir()){ihostListe(false);setInterval(()=>{if(!document.hidden)ihostListe(false)},15000);
@@ -1622,7 +1640,7 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
     const b=document.createElement('button');b.type='button';b.className='bal-m';
     const l=document.createElement('div');l.className='bal-l';l.setAttribute('aria-hidden','true');
     const mm={b,l,st:null,fn:null};b.onclick=ev=>{if(EDIT)return;mm.fn?mm.fn(ev):flip(id)};ov.insertBefore(b,more);ov.insertBefore(l,more);return marks[id]=mm}
-  const devNa=a=>{if(!IHLIST||!a.extId||(a.src!=='iHost'&&a.src!=='Meross'))return false;const c=IHLIST.find(x=>x.id===a.extId);return !!c&&c.cevrimici===false};
+  const devNa=a=>{if(!IHLIST||!a.extId||!BRG(a.src))return false;const c=IHLIST.find(x=>x.id===a.extId);return !!c&&c.cevrimici===false};
   function paint(m,o){const st=JSON.stringify(o);if(m.st===st)return;m.st=st;const b=m.b;
     b.classList.toggle('on',o.on===1);b.classList.toggle('part',o.on===.5);b.classList.toggle('grp',!!o.n);b.classList.toggle('pend',!!o.pend);b.classList.toggle('na',!!o.na);
     b.classList.toggle('ring',o.on>0&&o.bri!=null&&!o.na);b.style.setProperty('--p',(o.bri||0)+'%');

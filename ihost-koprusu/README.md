@@ -41,6 +41,11 @@ Konteyner köprüyü ve Cloudflare tünelini birlikte başlatır (iHost 32-bit A
 | GET | `/saglik` | açık mı, eşleşti mi |
 | POST | `/eslestir` | yalnız yönetici; CUBE belirteci alır |
 | GET | `/cihazlar` | `{cihazlar:[{id, ad, tur, cevrimici, acik, parlaklik, dimmer}]}` |
-| POST | `/cihaz/<id>` | `{acik, parlaklik}` |
+| POST | `/cihaz/<id>` | `{acik, parlaklik}`; Cosa termostat için `{hedef, acik}` |
+| POST | `/cosa/giris` | yalnız yönetici; `{eposta, sifre}` Cosa hesabını bağlar (bilgi iHost'un `/data/cosa.json` dosyasında) |
 
 Aile üyesinin `ev` yetkisi yoksa köprü 403 döner.
+
+
+## Cosa termostat
+Cosa'nın resmi arayüzü yok; köprü, Cosa uygulamasının kullandığı bulut arayüzüne (`kiwi.cosa.com.tr`) hesabınla bağlanır (kaynak: homebridge-cosa). Panelde Ayarlar → **Cosa termostat bağlantısı** → Bağlan; sonra Termostat türünde aksesuar ekleyip kaynak “Cosa”, cihaz olarak termostatı seç. Hedef sıcaklık ve aç/kapat panelden yönetilir; ölçülen sıcaklık ve hedef 15 sn'de bir eşitlenir. Köprü güncellemesi için `aksi-kopru` konteynerini yeniden başlat.
