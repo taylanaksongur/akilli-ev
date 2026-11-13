@@ -260,21 +260,29 @@ async function csListe() {
   return Promise.all(CS.cihazlar.map(async c => {
     let e = null;
     try { e = (await csIstek('/endpoints/getEndpoint', { endpoint: c.id })).endpoint; } catch { }
-    const mod = e && (e.mode != null || e.option != null) ? !(e.mode === 'manual' && e.option === 'frozen') : null;
+    const mod = e && e.option != null ? e.option !== 'frozen' : null;
     return { id: 'cosa:' + c.id, ad: c.ad, tur: 'thermostat', kaynak: 'Cosa', cevrimici: !!e, acik: mod, parlaklik: null, dimmer: false,
       sicaklik: e && typeof e.temperature === 'number' ? e.temperature : null,
       hedef: e && typeof e.targetTemperature === 'number' ? e.targetTemperature : null,
-      isitiyor: e ? e.combiState === 'on' : null };
+      isitiyor: e ? e.combiState === 'on' : null, nem: e && typeof e.humidity === 'number' ? e.humidity : null };
   }));
 }
+const csSicak = e => ({ home: e.homeTemperature, away: e.awayTemperature, sleep: e.sleepTemperature, custom: e.customTemperature });
 async function csKomut(id, b) {
   const uid = id.slice(5);
+  const e = (await csIstek('/endpoints/getEndpoint', { endpoint: uid })).endpoint || {};
   if (Number.isFinite(b.hedef)) {
-    const t = Math.max(5, Math.min(30, Math.round(b.hedef * 2) / 2));
-    let onceki = {}; try { onceki = ((await csIstek('/endpoints/getEndpoint', { endpoint: uid })).endpoint || {}).targetTemperatures || {}; } catch { }
-    await csIstek('/endpoints/setTargetTemperatures', { endpoint: uid, targetTemperatures: Object.assign({ away: 5, sleep: 5, custom: 5 }, onceki, { home: t }) });
+    /* Hedef, o an etkin olan ayarın (home/sleep/away/custom) sıcaklığı olarak yazılır; diğerleri aynen korunur */
+    const t = Math.max(5, Math.min(30, Math.round(b.hedef * 2) / 2)), tum = csSicak(e);
+    const anahtar = tum[e.option] !== undefined ? e.option : 'home';
+    for (const k in tum) if (!Number.isFinite(tum[k])) tum[k] = 5;
+    tum[anahtar] = t;
+    await csIstek('/endpoints/setTargetTemperatures', { endpoint: uid, targetTemperatures: tum });
   }
-  if (typeof b.acik === 'boolean') await csIstek('/endpoints/setMode', { endpoint: uid, mode: 'manual', option: b.acik ? 'home' : 'frozen' });
+  if (typeof b.acik === 'boolean') {
+    if (!b.acik) await csIstek('/endpoints/setMode', { endpoint: uid, mode: 'manual', option: 'frozen' });
+    else if (e.option === 'frozen') await csIstek('/endpoints/setMode', { endpoint: uid, mode: e.previousMode || 'schedule', option: e.previousOption || 'home' });
+  }
 }
 
 // ---- HTTP
