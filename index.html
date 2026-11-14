@@ -415,6 +415,7 @@ html:not(.ph) .ph-sheet{left:0;right:0;margin:0 auto;max-width:520px}
         <h3>SONOFF iHost bağlantısı</h3>
         <input type="hidden" id="ihostIp">
         <div class="row"><button class="btn" id="ihostBtn">Bağlantıyı dene</button><button class="btn ghost" id="ihostPair">Eşleştir</button><span class="note" id="ihostMsg">Bağlı değil</span></div>
+        <div class="note" id="ihostSon">Son komut: –</div>
         <p class="note">Köprüye Aksi hesabın üzerinden bağlanılır, adres girmen gerekmez. Eşleştirmek için iHost arayüzü açıkken (ya da iHost düğmesine bastıktan sonra) “Eşleştir”e dokun. Aksesuarı düzenlerken “Cihaz kimliği” listeden seçilir; 2 kanallı rölelerde her kanal ayrı görünür.</p>
         <datalist id="ihostList"></datalist>
       </div>
@@ -453,6 +454,7 @@ html:not(.ph) .ph-sheet{left:0;right:0;margin:0 auto;max-width:520px}
   <div class="row"><button type="button" class="btn ghost" id="lockCancel">Vazgeç</button><button type="submit" class="btn">Aç</button></div>
 </form></div>
 
+<script>if("serviceWorker" in navigator&&location.protocol==="https:"||location.hostname==="localhost")navigator.serviceWorker.register("sw.js",{scope:"./"}).catch(function(){})</script>
 <script src="/Aksi/hesap.js"></script>
 <script src="/Aksi/esitle.js"></script>
 <script>/* Aksi girişi zorunlu: oturum ya da alan yetkisi yoksa Aksi giriş ekranına */
@@ -622,9 +624,9 @@ function init3D(){
   if(!window.THREE){stage.innerHTML='<p class="note" style="padding:24px">3B görünüm yüklenemedi. Sayfayı yenileyin.</p>';return}
   let renderer;
   try{renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});renderer.setClearColor(0x000000,0)}catch(e){stage.innerHTML='<p class="note" style="padding:24px">Bu cihazda 3B görünüm açılamadı.</p>';return}
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,(matchMedia('(pointer:coarse)').matches||'ontouchstart' in window)?1.5:2));
   renderer.outputEncoding=THREE.sRGBEncoding;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;
-  renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  renderer.shadowMap.enabled=true;renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   stage.appendChild(renderer.domElement);
   const root=new THREE.Scene();root.background=null;let scene=new THREE.Group();root.add(scene);const FG={1:scene};
   const camera=new THREE.PerspectiveCamera(32,1,0.1,100);
@@ -984,10 +986,10 @@ function init3D(){
     /* tuvalin sol alt köşesindeki küçük bir bölgeye çiz (hızlı), sonra o bölgeyi kopyala; ana görünüm hemen ardından yeniden çizilir */
     const rc=renderer.domElement,pr=renderer.getPixelRatio();let vw=Math.min(640,rc.width),vh=Math.round(vw*9/16);if(vh>rc.height){vh=rc.height;vw=Math.round(vh*16/9)}
     vcam.aspect=16/9;vcam.updateProjectionMatrix();
-    T.CAMCONE.forEach(c=>c.visible=false);const ex=renderer.toneMappingExposure;renderer.toneMappingExposure=1.9;renderer.shadowMap.autoUpdate=false;
+    T.CAMCONE.forEach(c=>c.visible=false);const ex=renderer.toneMappingExposure;renderer.toneMappingExposure=1.9;
     renderer.setViewport(0,0,vw/pr,vh/pr);renderer.render(root,vcam);
     const g=cv.getContext('2d'),W=cv.width,H=cv.height;g.fillStyle='#05060d';g.fillRect(0,0,W,H);g.drawImage(rc,0,rc.height-vh,vw,vh,0,0,W,H);
-    renderer.setViewport(0,0,rc.width/pr,rc.height/pr);renderer.toneMappingExposure=ex;renderer.shadowMap.autoUpdate=true;T.CAMCONE.forEach(c=>c.visible=true);
+    renderer.setViewport(0,0,rc.width/pr,rc.height/pr);renderer.toneMappingExposure=ex;T.CAMCONE.forEach(c=>c.visible=true);
     g.fillStyle='rgba(255,255,255,.035)';for(let y=0;y<H;y+=3)g.fillRect(0,y,W,1)};
   /* Oda görünümü: oda poligonunun ortasına yumuşak yakınlaşma (k=null → genel görünüm) */
   let fly=null;
@@ -1001,7 +1003,7 @@ function init3D(){
   T.flyStep=()=>{if(!fly)return false;const u=Math.min(1,(performance.now()-fly.t0)/650),e=u<.5?2*u*u:1-Math.pow(-2*u+2,2)/2,f=fly.f,t=fly.to;
     target.x=f.x+(t.x-f.x)*e;target.z=f.z+(t.z-f.z)*e;theta=f.th+(t.th-f.th)*e;phi=f.ph+(t.ph-f.ph)*e;zoom=f.zm+(t.zm-f.zm)*e;
     if(u>=1)fly=null;return true};
-  T.setFloor=n=>{for(const k in FG)FG[k].visible=+k===n;const c=FLS[n].cam;if(TOP){const hb=houseBox(true);HOME.set(hb.cx,0.4,hb.cz)}else HOME.set(X(c[0]),0.4,Z(c[1]));camHW=c[2];camHD=c[3];target.copy(HOME);if(!TOP){theta=0;phi=0.72}zoom=1;fit();needs=true};
+  T.setFloor=n=>{renderer.shadowMap.needsUpdate=true;for(const k in FG)FG[k].visible=+k===n;const c=FLS[n].cam;if(TOP){const hb=houseBox(true);HOME.set(hb.cx,0.4,hb.cz)}else HOME.set(X(c[0]),0.4,Z(c[1]));camHW=c[2];camHD=c[3];target.copy(HOME);if(!TOP){theta=0;phi=0.72}zoom=1;fit();needs=true};
   T.setTop=v=>{TOP=!!v;stage.style.height='';stage.style.minHeight='';stage.__ph=0;if(!TOP){theta=0;phi=0.72}T.setFloor(FLOOR);BAL.kick&&BAL.kick()};
   const el=renderer.domElement;el.style.cssText='touch-action:none;display:block;width:100%;height:100%';
   const ptrs=new Map();let downAt=null,moved=0,pinch0=0,zoom0=1,mid=null,panMode=false,lastTap=0;
@@ -1038,14 +1040,14 @@ function init3D(){
     if(a.kind==='climate'){openPop(a,e);return}
     const now=!a.on;patchAcc(id,{on:now});
     toast(a.kind==='cover'?`${a.name} ${now?'açılıyor':'kapanıyor'}`:`${a.name} ${now?'açıldı':'kapatıldı'}`)}
-  T.kick=()=>{needs=true};T.getZoom=()=>zoom;
+  T.kick=()=>{needs=true};T.shadowDirty=()=>{renderer.shadowMap.needsUpdate=true;needs=true};T.getZoom=()=>zoom;
   (function loop(){requestAnimationFrame(loop);let anim=false;if(T.flyStep())anim=true;
     T.PL.forEach(l=>{const t=l.userData.target;if(Math.abs(l.intensity-t)>0.005){l.intensity+=(t-l.intensity)*0.15;anim=true}else l.intensity=t});
     T.HALO.forEach(h=>{const t=h.userData.target,o=h.material.opacity;if(Math.abs(o-t)>0.005){h.material.opacity+=(t-o)*0.15;anim=true}else h.material.opacity=t});
-    T.COVERS.forEach(c=>{const t=c.userData.target,v=c.userData.v;if(Math.abs(v-t)>0.003){c.userData.v+=(t-v)*0.12;layoutCover(c);anim=true}});
+    T.COVERS.forEach(c=>{const t=c.userData.target,v=c.userData.v;if(Math.abs(v-t)>0.003){c.userData.v+=(t-v)*0.12;layoutCover(c);anim=true;renderer.shadowMap.needsUpdate=true}});
     if(camDemo&&stage.offsetParent!==null){const n=performance.now();if(n-camDemo.t>1000){camDemo.t=n;const a=ACC[camDemo.id];if(a&&a.pts&&a.pts.length){T.camShot(a,camDemo.cv);needs=true;T.noShadow=!anim}}}
     if(!(needs||anim)||stage.offsetParent===null)return;needs=false;placeCam();
-    if(T.noShadow){renderer.shadowMap.autoUpdate=false;renderer.render(root,camera);renderer.shadowMap.autoUpdate=true;T.noShadow=false}else renderer.render(root,camera)})();
+    T.noShadow=false;renderer.render(root,camera)})();
 }
 function layoutCover(c){const{len,v,panels}=c.userData;const w=Math.max(0.12,len/2*v);
   panels.forEach((p,i)=>{p.scale.x=w/(len/2);p.position.x=(i?1:-1)*(len/2-w/2)})}
@@ -1053,7 +1055,7 @@ function layoutCover(c){const{len,v,panels}=c.userData;const w=Math.max(0.12,len
 function rebuildAcc(){
   if(!T)return;const{scene,add,mat,M,haloTex,lineTex}=T;
   if(T.group){scene.remove(T.group);T.group.traverse(o=>{if(o.geometry)o.geometry.dispose()})}
-  const g=new THREE.Group();T.group=g;scene.add(g);T.PL=[];T.HALO=[];T.EMIS=[];T.HIT=[];T.COVERS=[];T.CLIM=[];T.PLUGLED=[];T.CAMCONE=[];
+  T.shadowDirty&&T.shadowDirty();const g=new THREE.Group();T.group=g;scene.add(g);T.PL=[];T.HALO=[];T.EMIS=[];T.HIT=[];T.COVERS=[];T.CLIM=[];T.PLUGLED=[];T.CAMCONE=[];
   const A=(geo,m,x,y,z)=>add(geo,m,x,y,z,0,g);
   const pl=(id,x,y,z,max,dist)=>{const l=new THREE.PointLight('#ffb35a',0,(dist||4.2)*1.1,2);l.position.set(x,y,z);l.userData={id,max:max*1.35,target:0};g.add(l);T.PL.push(l)};
   const halo=(id,x,y,z,s)=>{const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:haloTex,blending:THREE.AdditiveBlending,depthWrite:false,transparent:true,opacity:0}));
@@ -1597,9 +1599,9 @@ async function ihostIstek(yol,govde){
   let tk=null;try{tk=localStorage.getItem('aksi-oturum')}catch(e){}   /* Aksi oturum belirteci (hesap.js) */
   if(!tk)throw new Error('Önce Aksi’de giriş yap');
   const h={'Content-Type':'application/json',Authorization:'Bearer '+tk};
-  const ac=new AbortController(),to=setTimeout(()=>ac.abort(),8000);
+  const ac=new AbortController(),to=setTimeout(()=>ac.abort(),8000);const t0=performance.now();if(govde)ihostEtkin();
   let r;try{r=await fetch(IHOST_TABAN+yol,{method:govde?'POST':'GET',headers:h,body:govde?JSON.stringify(govde):undefined,cache:'no-store',signal:ac.signal})}
-  catch(e){throw new Error(e&&e.name==='AbortError'?'Yanıt gelmedi (zaman aşımı)':'Köprüye ulaşılamadı')}finally{clearTimeout(to)}
+  catch(e){throw new Error(e&&e.name==='AbortError'?'Yanıt gelmedi (zaman aşımı)':'Köprüye ulaşılamadı')}finally{clearTimeout(to);if(govde&&/^\/cihaz\//.test(yol)){const el=document.getElementById('ihostSon');if(el)el.textContent='Son komut: '+Math.round(performance.now()-t0)+' ms'}}
   const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.hata||('Hata '+r.status));return j}
 async function ihostListe(goster){const m=$('#ihostMsg');if(goster)m.textContent='Bağlanıyor…';
   try{let j=null;if(window.__ihOn){const p=window.__ihOn;window.__ihOn=null;j=await p}if(!j)j=await ihostIstek('/cihazlar');
@@ -1668,8 +1670,14 @@ patchAcc=function(id,patch){const a=ACC[id];const prev=a?{on:a.on,bri:a.bri,setT
     if('setT' in patch&&a.src==='Cosa'&&Number.isFinite(patch.setT))g.hedef=patch.setT;if(!Object.keys(g).length)return r;
     DEVST[id]={p:1};ihostIstek('/cihaz/'+encodeURIComponent(a.extId),g).then(()=>{delete DEVST[id]}).catch(e=>{DEVST[id]={err:1};if(prev&&ACC[id])_patchAcc(id,prev);errToast(a.name,e.message)})}
   return r};
-if(ihostHazir()){ihostListe(false);setInterval(()=>{if(!document.hidden)ihostListe(false)},6000);
-  document.addEventListener('visibilitychange',()=>{if(!document.hidden)ihostListe(false)})}
+/* Uyarlamalı yoklama: etkin kullanımda 6 sn, ~2 dk etkinlik yoksa 25 sn; dokunuş/komut/görünür olunca 6 sn'ye döner */
+let ihSon=Date.now(),ihTm=null;
+function ihostAralik(){return Date.now()-ihSon>120000?25000:6000}
+function ihostPlan(){clearTimeout(ihTm);ihTm=setTimeout(()=>{if(!document.hidden)ihostListe(false);ihostPlan()},ihostAralik())}
+function ihostEtkin(){const uyku=ihostAralik()>6000;ihSon=Date.now();if(uyku&&ihostHazir()&&!document.hidden){ihostListe(false);ihostPlan()}}
+if(ihostHazir()){ihostListe(false);ihostPlan();
+  ['pointerdown','keydown','touchstart'].forEach(k=>document.addEventListener(k,ihostEtkin,{passive:true,capture:true}));
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden){ihSon=Date.now();ihostListe(false);ihostPlan()}})}
 /* Işık düğmeleri (balon modu): ışık nesnesinden yanındaki düğmeye kısa kılavuz çizgisi */
 const BAL={on:false,exp:new Set(),kick:()=>{}};
 (function(){
