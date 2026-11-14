@@ -299,6 +299,11 @@ html.ph .hint{font-size:12px}
 .ph-md{position:relative;z-index:5;display:flex;width:100%;margin:0 0 6px;background:#141a3de6;border:1px solid #2a3260;border-radius:14px;overflow:hidden}
 .ph-md button{flex:1;min-height:46px;padding:0 20px;font-size:14px;font-weight:600;background:none;border:0;color:#aab2dd;border-radius:0}.ph-md button[aria-pressed=true]{background:#2c3a8c;color:#fff}
 .ph-ls{padding:56px 0 110px;color:#e8ebff}
+html:not(.ph) .dk-md{display:inline-flex;width:max-content;max-width:100%;align-self:flex-start;justify-self:start;margin:0 0 10px}html:not(.ph) .dk-md button{min-width:88px}
+html:not(.ph) .ph-ls{padding:8px 0 40px}
+html:not(.ph) .ph-sheet{left:0;right:0;margin:0 auto;max-width:520px}
+#view-kontrol.dk-2d .rooms-ov{display:none}
+#view-kontrol.dk-ls .stage,#view-kontrol.dk-ls .room-views,#view-kontrol.dk-ls .rooms-ov,#view-kontrol.dk-ls .hint{display:none}
 .ph-rs{margin-bottom:10px}.ph-rh{display:flex;align-items:center;gap:10px}.ph-rh h3{margin:0;font-size:24px;font-weight:700;flex:1}.ph-rh small{color:#aab2dd;font-size:13px}
 .ph-bt{min-height:44px;padding:0 16px;border-radius:22px;background:#26346e;border:1px solid #3d4d8f;color:#e8ebff;font-size:13px;font-weight:600}
 .ph-tg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:14px;row-gap:46px;padding:36px 0 12px}
@@ -453,6 +458,8 @@ html.ph .hint{font-size:12px}
 <script>/* Aksi girişi zorunlu: oturum ya da alan yetkisi yoksa Aksi giriş ekranına */
 (function(a){var h=window.hesap,git=function(){location.replace("/Aksi/?don="+encodeURIComponent(location.pathname))};if(!h){git();return}if(!h.koru(a))return;addEventListener("aksi-oturum-kapandi",git);h.ben().then(function(){if(!h.alanVar(a))git()}).catch(function(e){if(!e||!e.ag)git()})})("ev")</script>
 <script>window.aksiEsitle&&aksiEsitle({alan:"ev",anahtarlar:{"aksongur-aksesuarlar":{her:["on","bri"]},"aksongur-ihost":{},"aksongur-modlar":{},"aksongur-balon-yer":{},"aksongur-kamera-v3":{gizli:["pass"]}}})</script>
+<script>/* Işık durumunu en erken başlat: sayfa kütüphaneleri yüklenirken istek zaten yolda olsun */
+try{var __t=localStorage.getItem('aksi-oturum');if(__t){window.__ihOn=fetch('https://aksi-hesap.aksongur.workers.dev/kopru/ihost/cihazlar',{headers:{Authorization:'Bearer '+__t},cache:'no-store'}).then(function(r){return r.ok?r.json():null}).catch(function(){return null})}}catch(e){}</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 (function(){
@@ -461,6 +468,7 @@ const $=s=>document.querySelector(s);
 const PHQ=(location.search.match(/[?&]mod=(\w+)/)||[])[1];
 const PH=PHQ==='tel'?true:PHQ==='klasik'?false:(matchMedia('(pointer:coarse)').matches&&Math.min(screen.width,screen.height)<600);
 if(PH)document.documentElement.classList.add('ph');
+let TOP=PH;   /* üstten bakış (2B): telefonda hep, masaüstünde 2B modunda */
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function toast(t){const el=$('#toast');el.textContent=t;el.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.remove('show'),1900)}
 
@@ -958,7 +966,7 @@ function init3D(){
   let theta=(PH&&innerHeight>innerWidth)?Math.PI/2:0,phi=PH?0.02:0.72,zoom=1,baseR=14;
   function fit(){const w=stage.clientWidth,h=stage.clientHeight;if(!w||!h)return;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false);
     const vf=camera.fov*Math.PI/360,hf=Math.atan(Math.tan(vf)*camera.aspect);
-    if(PH){const por=innerHeight>innerWidth;theta=por?Math.PI/2:0;phi=0.02;const hb=houseBox(true),sw=por?hb.hd:hb.hw,sh=por?hb.hw:hb.hd,mx=por?30:34,my=por?34:34;
+    if(TOP){const por=innerHeight>innerWidth;theta=por?Math.PI/2:0;phi=0.02;const hb=houseBox(true),sw=por?hb.hd:hb.hw,sh=por?hb.hw:hb.hd,mx=por?30:34,my=por?34:34;
       {const ppu=(w-2*mx)/(2*sw),need=Math.round(2*sh*ppu+2*my),cap=Math.max(300,Math.round(innerHeight*(por?.86:.72)-(por?60:0))),hh=Math.max(260,Math.min(need,cap));
        if(Math.abs(hh-h)>3&&!stage.__ph){stage.__ph=1;stage.style.height=hh+'px';stage.style.minHeight='0';requestAnimationFrame(()=>{stage.__ph=0;fit()});return}}
       baseR=Math.max(sw/(Math.tan(hf)*Math.max(.3,(w-2*mx)/w)),sh/(Math.tan(vf)*Math.max(.3,(h-2*my)/h)))}
@@ -984,23 +992,24 @@ function init3D(){
   /* Oda görünümü: oda poligonunun ortasına yumuşak yakınlaşma (k=null → genel görünüm) */
   let fly=null;
   T.goRoom=k=>{const R=k&&ROOMS[k];let to;
-    if(!R)to={x:HOME.x,z:HOME.z,th:PH?theta:0,ph:PH?0.02:0.72,zm:1};
+    if(!R)to={x:HOME.x,z:HOME.z,th:TOP?theta:0,ph:TOP?0.02:0.72,zm:1};
     else{const pts=R.poly.trim().split(/\s+/).map(p=>p.split(',').map(Number));
       const xs=pts.map(p=>X(p[0])),zs=pts.map(p=>Z(p[1]));const x0=Math.min(...xs),x1=Math.max(...xs),z0=Math.min(...zs),z1=Math.max(...zs);
       const zm=Math.max(0.3,Math.min(0.75,Math.max((x1-x0)/(2*camHW),(z1-z0)/(2*camHD))*1.15));
-      to={x:(x0+x1)/2,z:(z0+z1)/2,th:theta,ph:PH?0.02:0.82,zm}}
+      to={x:(x0+x1)/2,z:(z0+z1)/2,th:theta,ph:TOP?0.02:0.82,zm}}
     fly={t0:performance.now(),f:{x:target.x,z:target.z,th:theta,ph:phi,zm:zoom},to};needs=true};
   T.flyStep=()=>{if(!fly)return false;const u=Math.min(1,(performance.now()-fly.t0)/650),e=u<.5?2*u*u:1-Math.pow(-2*u+2,2)/2,f=fly.f,t=fly.to;
     target.x=f.x+(t.x-f.x)*e;target.z=f.z+(t.z-f.z)*e;theta=f.th+(t.th-f.th)*e;phi=f.ph+(t.ph-f.ph)*e;zoom=f.zm+(t.zm-f.zm)*e;
     if(u>=1)fly=null;return true};
-  T.setFloor=n=>{for(const k in FG)FG[k].visible=+k===n;const c=FLS[n].cam;if(PH){const hb=houseBox(true);HOME.set(hb.cx,0.4,hb.cz)}else HOME.set(X(c[0]),0.4,Z(c[1]));camHW=c[2];camHD=c[3];target.copy(HOME);if(!PH){theta=0;phi=0.72}zoom=1;fit();needs=true};
+  T.setFloor=n=>{for(const k in FG)FG[k].visible=+k===n;const c=FLS[n].cam;if(TOP){const hb=houseBox(true);HOME.set(hb.cx,0.4,hb.cz)}else HOME.set(X(c[0]),0.4,Z(c[1]));camHW=c[2];camHD=c[3];target.copy(HOME);if(!TOP){theta=0;phi=0.72}zoom=1;fit();needs=true};
+  T.setTop=v=>{TOP=!!v;stage.style.height='';stage.style.minHeight='';stage.__ph=0;if(!TOP){theta=0;phi=0.72}T.setFloor(FLOOR);BAL.kick&&BAL.kick()};
   const el=renderer.domElement;el.style.cssText='touch-action:none;display:block;width:100%;height:100%';
   const ptrs=new Map();let downAt=null,moved=0,pinch0=0,zoom0=1,mid=null,panMode=false,lastTap=0;
   /* kaydırma: ekrandaki piksel hareketini zemin düzleminde hedef noktasına çevirir */
   function pan(dx,dy){const k=2*baseR*zoom*Math.tan(camera.fov*Math.PI/360)/(stage.clientHeight||1);
     const rx=Math.cos(theta),rz=-Math.sin(theta),fx=-Math.sin(theta),fz=-Math.cos(theta),fy=k/Math.max(0.45,Math.cos(phi));
     target.x-=rx*dx*k-fx*dy*fy;target.z-=rz*dx*k-fz*dy*fy;
-    if(PH){const hb=houseBox(true),M=60,W=(stage.clientWidth||1)/2,Hh=(stage.clientHeight||1)/2,
+    if(TOP){const hb=houseBox(true),M=60,W=(stage.clientWidth||1)/2,Hh=(stage.clientHeight||1)/2,
       Hx=(Math.abs(rx)*hb.hw+Math.abs(rz)*hb.hd)/k,Hy=(Math.abs(fx)*hb.hw+Math.abs(fz)*hb.hd)/k,
       dx0=hb.cx-target.x,dz0=hb.cz-target.z;let ox=(dx0*rx+dz0*rz)/k,oy=(dx0*fx+dz0*fz)/k;
       const cl=(v,H,Wd)=>{const lim=H-(Wd-M);return lim<=0?0:Math.max(-lim,Math.min(lim,v))};ox=cl(ox,Hx,W);oy=cl(oy,Hy,Hh);
@@ -1012,7 +1021,7 @@ function init3D(){
     if(ptrs.size===2){mid=midOf();pinch0=mid.d;zoom0=zoom}});
   el.addEventListener('pointermove',e=>{const p=ptrs.get(e.pointerId);if(!p){el.style.cursor=hitAt(e)?'pointer':'grab';return}
     const dx=e.clientX-p.x,dy=e.clientY-p.y;p.x=e.clientX;p.y=e.clientY;moved+=Math.abs(dx)+Math.abs(dy);
-    if(ptrs.size===1){if(panMode||PH)pan(dx,dy);else{theta=Math.max(-1.2,Math.min(1.2,theta-dx*0.006));phi=Math.max(0.2,Math.min(1.15,phi-dy*0.005));needs=true}}
+    if(ptrs.size===1){if(panMode||TOP)pan(dx,dy);else{theta=Math.max(-1.2,Math.min(1.2,theta-dx*0.006));phi=Math.max(0.2,Math.min(1.15,phi-dy*0.005));needs=true}}
     else if(ptrs.size===2){const m=midOf();if(mid)pan(m.x-mid.x,m.y-mid.y);mid=m;zoom=Math.max(0.3,Math.min(1.5,zoom0*pinch0/m.d));needs=true}});
   el.addEventListener('pointerup',e=>{ptrs.delete(e.pointerId);if(ptrs.size<2)mid=null;
     if(ptrs.size===0&&downAt&&moved<8){const now=performance.now();if(now-lastTap<320&&!hitAt(e)){T.goRoom(null);roomView(null);lastTap=0}else{lastTap=now;tap(e)}}
@@ -1583,7 +1592,8 @@ async function ihostIstek(yol,govde){
   catch(e){throw new Error(e&&e.name==='AbortError'?'Yanıt gelmedi (zaman aşımı)':'Köprüye ulaşılamadı')}finally{clearTimeout(to)}
   const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.hata||('Hata '+r.status));return j}
 async function ihostListe(goster){const m=$('#ihostMsg');if(goster)m.textContent='Bağlanıyor…';
-  try{const j=await ihostIstek('/cihazlar');IHLIST=j.cihazlar||[];
+  try{let j=null;if(window.__ihOn){const p=window.__ihOn;window.__ihOn=null;j=await p}if(!j)j=await ihostIstek('/cihazlar');
+    if(j.eski&&Date.now()-(ihostListe.uy||0)>60000){ihostListe.uy=Date.now();toast('iHost’tan güncel durum alınamıyor; ışık durumları eski olabilir')}IHLIST=j.cihazlar||[];
     $('#ihostList').innerHTML=IHLIST.map(c=>`<option value="${esc(c.id)}">${esc(c.ad)}${c.cevrimici?'':' (çevrim dışı)'}</option>`).join('');
     const nM=IHLIST.filter(c=>c.kaynak==='Meross').length,nC=IHLIST.filter(c=>c.kaynak==='Cosa').length,nL=IHLIST.filter(c=>c.kaynak==='LG').length;m.textContent=`Bağlı · ${IHLIST.length-nM-nC-nL} cihaz`;
     if(j.lg&&$('#lgMsg')&&j.lg.ip)$('#lgMsg').textContent=j.lg.bagli?'Bağlı · '+j.lg.ip:j.lg.istem?'TV ekranındaki izin sorusuna Evet de':'TV kapalı ya da ulaşılamıyor';
@@ -1604,6 +1614,7 @@ function ihostDurumAl(){if(!IHLIST)return;let n=0;
       const t=typeof c.sicaklik==='number'?c.sicaklik:undefined,h=typeof c.nem==='number'?c.nem:undefined;
       if(a.sT!==t){a.sT=t;n++}if(a.sN!==h){a.sN=h;n++}return}
     if(isTV(a)){if(typeof c.ses==='number'&&a.ses!==c.ses){a.ses=c.ses;n++}if(typeof c.sessiz==='boolean'&&a.sessiz!==c.sessiz){a.sessiz=c.sessiz;n++}}
+    if(DEVST[a.id]&&DEVST[a.id].p||Date.now()-(a._cmd||0)<6000)return;   /* komut sürerken ya da yeni gittiyse eski durum ışığı geri çevirmesin */
     if(c.acik==null)return;
     if(!!a.on!==c.acik){a.on=c.acik;n++}if(a.dim&&c.parlaklik!=null&&a.bri!==c.parlaklik){a.bri=c.parlaklik;n++}});
   if(n){afterChange(false)}}
@@ -1639,13 +1650,13 @@ document.addEventListener('change',e=>{if(!edit)return;
 var DEVST={};let errQ=[],errT=0;
 function errToast(name,msg){errQ.push(name);clearTimeout(errT);errT=setTimeout(()=>{toast(errQ.length===1?errQ[0]+': '+msg:`${errQ.length} ışık: ${msg}`);errQ=[]},300)}
 const _patchAcc=patchAcc;
-patchAcc=function(id,patch){const a=ACC[id];const prev=a?{on:a.on,bri:a.bri,setT:a.setT}:null;if(a&&'setT' in patch)a._st=Date.now();const r=_patchAcc(id,patch);
+patchAcc=function(id,patch){const a=ACC[id];const prev=a?{on:a.on,bri:a.bri,setT:a.setT}:null;if(a&&'setT' in patch)a._st=Date.now();if(a&&('on' in patch||'bri' in patch))a._cmd=Date.now();const r=_patchAcc(id,patch);
   if(a&&(BRG(a.src))&&a.extId&&ihostHazir()&&('on' in patch||'bri' in patch||'setT' in patch)){
     const g={};if('on' in patch)g.acik=!!patch.on;if('bri' in patch&&Number.isFinite(patch.bri))g.parlaklik=patch.bri;
     if('setT' in patch&&a.src==='Cosa'&&Number.isFinite(patch.setT))g.hedef=patch.setT;if(!Object.keys(g).length)return r;
     DEVST[id]={p:1};ihostIstek('/cihaz/'+encodeURIComponent(a.extId),g).then(()=>{delete DEVST[id]}).catch(e=>{DEVST[id]={err:1};if(prev&&ACC[id])_patchAcc(id,prev);errToast(a.name,e.message)})}
   return r};
-if(ihostHazir()){ihostListe(false);setInterval(()=>{if(!document.hidden)ihostListe(false)},15000);
+if(ihostHazir()){ihostListe(false);setInterval(()=>{if(!document.hidden)ihostListe(false)},6000);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)ihostListe(false)})}
 /* Işık düğmeleri (balon modu): ışık nesnesinden yanındaki düğmeye kısa kılavuz çizgisi */
 const BAL={on:false,exp:new Set(),kick:()=>{}};
@@ -1669,7 +1680,7 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
   const flip=id=>{const a=ACC[id];if(!a)return;const now=!a.on;patchAcc(id,{on:now});pulse([id]);toast(`${a.name} ${now?'açıldı':'kapatıldı'}`);sig=''};
   const flipGrp=(ids,name)=>{const any=ids.some(id=>ACC[id]&&ACC[id].on);ids.forEach(id=>{if(ACC[id]&&!!ACC[id].on===any)patchAcc(id,{on:!any})});pulse(ids);toast(`${name}: ${any?'kapatıldı':'açıldı'}`);sig=''};
   function set(v,first){BAL.on=on=v;btn.classList.toggle('act',v);btn.setAttribute('aria-pressed',String(v));ov.hidden=!v;sig='';
-    if(!first||!PH)try{localStorage.setItem('balonMod',v?'1':'0')}catch(e){}
+    if(!first)try{localStorage.setItem('balonMod',v?'1':'0')}catch(e){}
     if(v&&!first)toast('Işıkları yanlarındaki yuvarlak düğmelerden aç/kapa');
     if(v&&!running){running=true;requestAnimationFrame(tick)}}
   btn.onclick=()=>set(!on);
@@ -1799,7 +1810,7 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
     if(listOpen){list.style.top=(top+44)+'px';list.innerHTML='';over.forEach(id=>{const a=ACC[id],b=document.createElement('button');b.type='button';b.className=a.on?'on':'';
       b.setAttribute('aria-pressed',String(!!a.on));b.innerHTML=icon(a.kind,'currentColor',18)+'<span></span>';b.lastChild.textContent=a.name;b.onclick=ev=>isInfo(a)?info(a,ev):flip(id);list.appendChild(b)})}
   }
-  function tick(){PH?tickP():tickO()}
+  function tick(){TOP?tickP():tickO()}
 
   {
   const mk=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
@@ -1815,9 +1826,9 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
     rc.setFromCamera(n2,T.camera);if(rc.ray.intersectPlane(g0,pt)){custom[drag]={x:pt.x,z:pt.z};sig=''}});
   ov.addEventListener('pointerup',()=>{if(drag)saveC();drag=null});ov.addEventListener('pointercancel',()=>{drag=null});
   }
-  if(PH){
+  {
   const mk=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
-  const hint=document.querySelector('.hint');if(hint){const vv=document.getElementById('ver');hint.textContent='Tek parmak: kaydır · İki parmak: yakınlaş · Boş yere çift dokun: sıfırla · Balon: aç / kapa · Oda balonu: ışıkları ayır · ';if(vv)hint.appendChild(vv)}
+  const hint=PH?document.querySelector('.hint'):null;if(hint){const vv=document.getElementById('ver');hint.textContent='Tek parmak: kaydır · İki parmak: yakınlaş · Boş yere çift dokun: sıfırla · Balon: aç / kapa · Oda balonu: ışıkları ayır · ';if(vv)hint.appendChild(vv)}
   /* ---- Liste modu ---- */
   const view=document.getElementById('view-kontrol'),wrap=view.querySelector('.stage-wrap');
   const LP=mk('div','ph-ls');LP.hidden=true;view.appendChild(LP);
@@ -1833,7 +1844,7 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
   const rn=k=>k==='_'?'Diğer':ROOMS[k].name;
   const stTxt=(a,on)=>isTV(a)?(a.on?'Açık':'Kapalı')+(typeof a.ses==='number'?' · Ses '+a.ses:''):NOTOG.test(a.kind)?(a.kind==='camera'?'Canlı görüntü':a.kind==='climate'?'Termostat':sensTxt(a)):on?'Açık':'Kapalı';
   function refreshCounts(){LP.querySelectorAll('.ph-rh small[data-k]').forEach(x=>{const T2=accOf(x.dataset.k).filter(TOG),n=T2.filter(a=>a.on).length;x.textContent=T2.length?n+' / '+T2.length+' açık':''})}
-  function setMode(ls,save){LM=ls;wrap.style.display=ls?'none':'';LP.hidden=!ls;
+  function setMode(ls,save){LM=ls;if(PH)wrap.style.display=ls?'none':'';else view.classList.toggle('dk-ls',ls);LP.hidden=!ls;
     if(save!==false)try{localStorage.setItem('aksongur-mod',ls?'ls':'3d')}catch(e){}
     if(ls)renderList();else{if(T&&T.kick)T.kick();sig=''}}
   function buildGrid(A){const gt=mk('div','ph-tg');
@@ -1868,20 +1879,20 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
     refreshCounts();window.scrollTo(0,st)}
   window.__lsRefresh=()=>{clearTimeout(rt);rt=setTimeout(function f(){if(!LM)return;if(busy||Date.now()-lastLocal<=800){rt=setTimeout(f,500);return}renderList()},300)};
   document.querySelectorAll('[data-floor]').forEach(b=>b.addEventListener('click',()=>setTimeout(()=>{if(LM)renderList()},0)));
-  const fl=document.querySelector('.floors'),menu=mk('div','ph-menu','<button data-m="3d">3B plan</button><button data-m="ls">Liste</button>');menu.hidden=true;document.body.appendChild(menu);
+  let menu=null,fl=null;if(PH){fl=document.querySelector('.floors');menu=mk('div','ph-menu','<button data-m="3d">3B plan</button><button data-m="ls">Liste</button>');menu.hidden=true;document.body.appendChild(menu);
   const hideM=()=>{menu.hidden=true};addEventListener('scroll',hideM,{passive:true});addEventListener('resize',hideM);
   function showM(){const r=fl.getBoundingClientRect();menu.style.top=(r.bottom+6)+'px';menu.style.left=r.left+'px';menu.style.width=r.width+'px';menu.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String((x.dataset.m==='ls')===LM)));menu.hidden=false}
   document.querySelectorAll('[data-floor]').forEach(b=>{b.addEventListener('pointerdown',()=>{b.__was=b.getAttribute('aria-pressed')==='true'},true);
     b.addEventListener('click',()=>{if(b.__was){menu.hidden?showM():hideM()}else hideM();b.__was=false})});
   menu.onclick=e=>{const b=e.target.closest('button');if(b){setMode(b.dataset.m==='ls');hideM()}};
   document.addEventListener('pointerdown',e=>{if(!menu.hidden&&!menu.contains(e.target)&&!e.target.closest('.floors'))hideM()});
-  try{if(localStorage.getItem('aksongur-mod')==='ls')setMode(true,false)}catch(e){}
+  try{if(localStorage.getItem('aksongur-mod')==='ls')setMode(true,false)}catch(e){}}
 
-  const c0=stage.querySelector('.stage-ctrl');if(c0)stage.after(c0);document.body.appendChild(document.getElementById('camWin'));
+  if(PH){const c0=stage.querySelector('.stage-ctrl');if(c0)stage.after(c0);document.body.appendChild(document.getElementById('camWin'))}
   const bd=mk('div','ph-bd'),sh=mk('div','ph-sheet');bd.hidden=sh.hidden=true;document.body.append(bd,sh);
   let shA=null,tT=null;
   const closeS=()=>{bd.hidden=sh.hidden=true;shA=null;if(LM)renderList()};bd.onclick=closeS;
-  function openSheet(a){shA=a;drawS();bd.hidden=sh.hidden=false}BAL.sheet=openSheet;btn.querySelector('span').textContent='Balonlar';
+  function openSheet(a){shA=a;drawS();bd.hidden=sh.hidden=false}BAL.sheet=openSheet;if(PH)btn.querySelector('span').textContent='Balonlar';
   const fx2=v=>(+v).toFixed(1).replace('.',',');
   function drawS(){const a=shA,K=KINDS[a.kind],t=TOG(a),isF=FAV.includes(a.id);let h='<div class="ph-sh-h"><strong></strong><small>'+K.label+'</small></div>';
     if(t)h+='<button class="ph-sh-b" data-a="tog">'+(a.kind==='cover'?(a.on?'Perdeyi kapat':'Perdeyi aç'):(a.on?'Kapat':'Aç'))+'</button>';
@@ -1902,7 +1913,8 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
     else if(k==='cam'){closeS();openCam(a.id)}
     else if(k==='fav'){FAV=FAV.includes(a.id)?FAV.filter(x=>x!==a.id):FAV.concat(a.id);sv(FAVK,FAV);drawS()}
     else if(k.slice(0,2)==='mv'){const rk=ROOMS[a.room]?a.room:'_',ids=accOf(rk).map(x=>x.id),i=ids.indexOf(a.id),j=i+ +k.slice(2);if(i>=0&&j>=0&&j<ids.length){ids.splice(j,0,ids.splice(i,1)[0]);ORD[rk]=ids;sv(ORDK,ORD);toast(j<i?'Öne alındı':'Sona alındı')}}};
-  /* sahneler + geri al */
+  /* sahneler + geri al (yalnız telefon) */
+  if(PH){
   const sc=mk('div','ph-sc');sc.hidden=true;const mb=mk('button','','Modlar ▾');mb.id='phModBtn';mb.type='button';mb.setAttribute('aria-expanded','false');
   const fillSc=()=>{sc.innerHTML='';getScenes().forEach(x=>{const b=mk('button','',''); b.style.setProperty('--sc',x.c);b.textContent=x.name;b.onclick=()=>{sc.hidden=true;mb.setAttribute('aria-expanded','false');runSc(x)};sc.appendChild(b)})};
   mb.onclick=()=>{if(sc.hidden)fillSc();sc.hidden=!sc.hidden;mb.setAttribute('aria-expanded',String(!sc.hidden))};view.append(mb,sc);
@@ -1914,6 +1926,19 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
     snap=ch;un.firstChild.textContent='“'+x.name+'” çalıştı'+(ch.length?'':' (değişen yok)');un.lastChild.hidden=!ch.length;un.hidden=false;clearTimeout(uT);uT=setTimeout(()=>{un.hidden=true;snap=null},6000)}
   un.lastChild.onclick=()=>{const s2=snap;snap=null;un.hidden=true;if(!s2)return;lastLocal=Date.now()+s2.length*60;s2.forEach(([id,o],i)=>setTimeout(()=>patchAcc(id,o),i*60));setTimeout(()=>{if(LM)renderList()},s2.length*60+80)};
   try{if(!localStorage.getItem('aksongur-ipucu')){localStorage.setItem('aksongur-ipucu','1');setTimeout(()=>toast('İpucu: seçili kata bir daha dokun → 3B / Liste. Kutuya uzun bas → ayrıntı'),1200)}}catch(e){}
+  }   /* yalnız telefon sonu */
+  /* Masaüstü / tablet: 2B (üstten, telefondaki gibi) | Liste (telefondaki gibi) | 3B (şimdiki görünüm) */
+  if(!PH){
+    const md=mk('div','ph-md dk-md','<button data-m="2d">2B</button><button data-m="ls">Liste</button><button data-m="3d">3B</button>');
+    view.insertBefore(md,wrap);let autoBal=false;
+    const apply=(m,save)=>{view.classList.toggle('dk-2d',m==='2d');md.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.m===m)));
+      if(m==='ls')setMode(true,false);
+      else{setMode(false,false);const top=m==='2d';if(T&&T.setTop&&top!==TOP)T.setTop(top);
+        if(top){if(!on){set(true,true);autoBal=true}}else if(autoBal&&on){set(false,true);autoBal=false}}
+      if(save)try{localStorage.setItem('aksongur-dkmod',m)}catch(e){}};
+    md.onclick=e=>{const b=e.target.closest('button');if(b)apply(b.dataset.m,true)};
+    let m0='3d';try{m0=localStorage.getItem('aksongur-dkmod')||'3d'}catch(e){}apply(m0,false);
+  }
   }
   set(on,true);
 })();
