@@ -415,7 +415,7 @@ html:not(.ph) .ph-sheet{left:0;right:0;margin:0 auto;max-width:520px}
         <h3>SONOFF iHost bağlantısı</h3>
         <input type="hidden" id="ihostIp">
         <div class="row"><button class="btn" id="ihostBtn">Bağlantıyı dene</button><button class="btn ghost" id="ihostPair">Eşleştir</button><span class="note" id="ihostMsg">Bağlı değil</span></div>
-        <div class="note" id="ihostSon">Son komut: –</div>
+        <div class="note" id="ihostSon">Son komut gidiş-dönüş: –</div>
         <p class="note">Köprüye Aksi hesabın üzerinden bağlanılır, adres girmen gerekmez. Eşleştirmek için iHost arayüzü açıkken (ya da iHost düğmesine bastıktan sonra) “Eşleştir”e dokun. Aksesuarı düzenlerken “Cihaz kimliği” listeden seçilir; 2 kanallı rölelerde her kanal ayrı görünür.</p>
         <datalist id="ihostList"></datalist>
       </div>
@@ -454,7 +454,7 @@ html:not(.ph) .ph-sheet{left:0;right:0;margin:0 auto;max-width:520px}
   <div class="row"><button type="button" class="btn ghost" id="lockCancel">Vazgeç</button><button type="submit" class="btn">Aç</button></div>
 </form></div>
 
-<script>if("serviceWorker" in navigator&&location.protocol==="https:"||location.hostname==="localhost")navigator.serviceWorker.register("sw.js",{scope:"./"}).catch(function(){})</script>
+<script>try{if(navigator.serviceWorker&&(location.protocol==="https:"||location.hostname==="localhost"))navigator.serviceWorker.register("sw.js",{scope:"./"}).catch(function(){})}catch(e){}</script>
 <script src="/Aksi/hesap.js"></script>
 <script src="/Aksi/esitle.js"></script>
 <script>/* Aksi girişi zorunlu: oturum ya da alan yetkisi yoksa Aksi giriş ekranına */
@@ -1601,8 +1601,9 @@ async function ihostIstek(yol,govde){
   const h={'Content-Type':'application/json',Authorization:'Bearer '+tk};
   const ac=new AbortController(),to=setTimeout(()=>ac.abort(),8000);const t0=performance.now();if(govde)ihostEtkin();
   let r;try{r=await fetch(IHOST_TABAN+yol,{method:govde?'POST':'GET',headers:h,body:govde?JSON.stringify(govde):undefined,cache:'no-store',signal:ac.signal})}
-  catch(e){throw new Error(e&&e.name==='AbortError'?'Yanıt gelmedi (zaman aşımı)':'Köprüye ulaşılamadı')}finally{clearTimeout(to);if(govde&&/^\/cihaz\//.test(yol)){const el=document.getElementById('ihostSon');if(el)el.textContent='Son komut: '+Math.round(performance.now()-t0)+' ms'}}
-  const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.hata||('Hata '+r.status));return j}
+  catch(e){if(govde&&/^\/cihaz\//.test(yol)){const el=document.getElementById('ihostSon');if(el)el.textContent='Son komut: hata'}throw new Error(e&&e.name==='AbortError'?'Yanıt gelmedi (zaman aşımı)':'Köprüye ulaşılamadı')}finally{clearTimeout(to)}
+  const j=await r.json().catch(()=>({}));const el=govde&&/^\/cihaz\//.test(yol)?document.getElementById('ihostSon'):null;
+  if(!r.ok){if(el)el.textContent='Son komut: hata';throw new Error(j.hata||('Hata '+r.status))}if(el)el.textContent='Son komut gidiş-dönüş: '+Math.round(performance.now()-t0)+' ms';return j}
 async function ihostListe(goster){const m=$('#ihostMsg');if(goster)m.textContent='Bağlanıyor…';
   try{let j=null;if(window.__ihOn){const p=window.__ihOn;window.__ihOn=null;j=await p}if(!j)j=await ihostIstek('/cihazlar');
     if(j.eski&&Date.now()-(ihostListe.uy||0)>60000){ihostListe.uy=Date.now();toast('iHost’tan güncel durum alınamıyor; ışık durumları eski olabilir')}IHLIST=j.cihazlar||[];IHKOP=0;uyariKapat('ihost-baglanti');uyariDurum('ihost-eski',!!j.eski,'iHost’tan güncel durum alınamıyor; ışık durumları eski olabilir','uyari');
