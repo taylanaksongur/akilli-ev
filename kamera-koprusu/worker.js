@@ -1,15 +1,15 @@
 // Imou kamera köprüsü — Tekne paneli ve Akıllı ev paneli
-// Gizliler: IMOU_APPID, IMOU_SECRET, BOAT_KEY, HOME_KEY
-// BOAT_KEY tekne ve ev kameralarının hepsini, HOME_KEY yalnızca ev kameralarını açar.
+// Gizliler: IMOU_APPID, IMOU_SECRET. Erişim Aksi hesap belirteciyle (Authorization: Bearer) ve kameranın alan iznine göre verilir.
+const KAYNAK = 'https://taylanaksongur.github.io';
 const HOST = 'https://openapi-fk.easy4ip.com/openapi/';
-const GROUPS = {
-  BOAT_KEY: { on: { dev: '9C0483FPAZF65E9', name: 'Ön kamera' }, arka: { dev: '9E095B7PAZF85AE', name: 'Arka kamera' } },
-  HOME_KEY: {
-    yemek: { dev: 'D9B38BDPSFBED9B', name: 'Yemek' },
-    oturma: { dev: 'D9B38BDPSF69332', name: 'Oturma odası' },
-    bahce: { dev: 'D9B38BDPSF912E0', name: 'Bahçe' },
-    cocuk: { dev: 'D9B38BDPSF0FBD9', name: 'Çocuk' }
-  },
+// alan: kameranın bağlı olduğu alan (ev | tekne). Hesap servisindeki KAMERA_ALAN ile aynı tutulmalı.
+const KAMERALAR = {
+  on: { dev: '9C0483FPAZF65E9', name: 'Ön kamera', alan: 'tekne' },
+  arka: { dev: '9E095B7PAZF85AE', name: 'Arka kamera', alan: 'tekne' },
+  yemek: { dev: 'D9B38BDPSFBED9B', name: 'Yemek', alan: 'ev' },
+  oturma: { dev: 'D9B38BDPSF69332', name: 'Oturma odası', alan: 'ev' },
+  bahce: { dev: 'D9B38BDPSF912E0', name: 'Bahçe', alan: 'ev' },
+  cocuk: { dev: 'D9B38BDPSF0FBD9', name: 'Çocuk', alan: 'ev' },
 };
 let TOK = null, TOKEXP = 0;
 const LIVE = new Map(); // dev -> {data, exp}
@@ -44,30 +44,38 @@ async function status(env, devs) {
   const m = {}; (r.data?.deviceList || []).forEach(d => m[d.deviceId] = (d.channelList?.[0]?.channelStatus || d.deviceStatus) === 'online');
   return m;
 }
-function groupFor(env, key) { if (!key) return null;
-  if (env.BOAT_KEY && env.BOAT_KEY === key) return { ...GROUPS.BOAT_KEY, ...GROUPS.HOME_KEY };
-  for (const k in GROUPS) if (env[k] && env[k] === key) return GROUPS[k]; return null; }
-
-/* Aksi hesabı: ev yetkisi ev kameralarını, tekne yetkisi tüm kameraları (tekne + ev) açar. Hesap servisine servis bağlantısıyla sorulur. */
+/* Aksi hesabı: her kamera yalnızca kendi alanı için izni olana açılır (ev -> ev kameraları, tekne -> tekne kameraları).
+   Oturum yanıtı 60 sn önbelleklenir: alan izni değişikliği en geç 1 dk içinde geçerli olur. */
+const OTURUM = new Map(), OTURUM_MS = 60e3;
 async function groupForAksi(env, auth) {
-  if (!auth || !auth.startsWith('Bearer ') || !env.HESAP) return null;
-  try {
-    const r = await env.HESAP.fetch(new Request('https://aksi-hesap/ben', { headers: { Authorization: auth } }));
-    if (!r.ok) return null;
-    const { kullanici: k } = await r.json();
-    const al = k.rol === 'yonetici' ? ['ev', 'tekne'] : (k.alanlar || []);
-    if (al.includes('tekne')) return al.includes('ev') ? { ...GROUPS.BOAT_KEY, ...GROUPS.HOME_KEY } : GROUPS.BOAT_KEY;
-    return al.includes('ev') ? GROUPS.HOME_KEY : null;
-  } catch { return null; }
+  if (!auth || !auth.startsWith('Bearer ') || !env.HESAP) return { durum: 401 };
+  const c = OTURUM.get(auth);
+  let k = c && c.son > Date.now() ? c.k : null;
+  if (!k) {
+    OTURUM.delete(auth);
+    let r;
+    try { r = await env.HESAP.fetch(new Request('https://aksi-hesap/ben', { headers: { Authorization: auth } })); }
+    catch { return { durum: 503 }; }
+    if (r.status === 401) return { durum: 401 };
+    if (!r.ok) return { durum: 503 };
+    try { k = (await r.json()).kullanici; } catch { return { durum: 503 }; }
+    if (!k) return { durum: 401 };
+    OTURUM.set(auth, { k, son: Date.now() + OTURUM_MS });
+    if (OTURUM.size > 100) OTURUM.delete(OTURUM.keys().next().value);
+  }
+  const al = k.rol === 'yonetici' ? ['ev', 'tekne'] : (k.alanlar || []);
+  const g = Object.fromEntries(Object.entries(KAMERALAR).filter(([, c]) => al.includes(c.alan)));
+  return Object.keys(g).length ? { g } : { durum: 403 };
 }
 
 export default {
   async fetch(req, env) {
-    const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization', 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
+    const cors = { 'Access-Control-Allow-Origin': KAYNAK, 'Vary': 'Origin', 'Access-Control-Allow-Methods': 'GET, OPTIONS', 'Access-Control-Allow-Headers': 'Authorization', 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
     if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
     const u = new URL(req.url), out = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: cors });
-    const g = await groupForAksi(env, req.headers.get('Authorization'));   // eski X-Key şifreleri emekli
-    if (!g) return out({ error: 'Aksi girişi gerekli' }, 401);
+    const o = await groupForAksi(env, req.headers.get('Authorization'));   // eski X-Key şifreleri emekli
+    if (!o.g) return out({ error: o.durum === 401 ? 'Aksi girişi gerekli' : o.durum === 403 ? 'Kamera alanına erişimin yok' : 'Hesap servisine ulaşılamadı' }, o.durum);
+    const g = o.g;
     try {
       if (u.pathname === '/cams') {
         const st = await status(env);

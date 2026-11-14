@@ -30,18 +30,24 @@ const CF_LOG = '/tmp/cf.log';
 let cubeToken = process.env.CUBE_TOKEN || '';
 try { cubeToken = cubeToken || fs.readFileSync(TOKEN_DOSYA, 'utf8').trim(); } catch { }
 
-// ---- Aksi oturum denetimi (5 dk önbellek)
-const oturumlar = new Map();
+// ---- Aksi oturum denetimi: hesap servisinin /ben yanıtı 60 sn önbelleklenir (alan/rol değişikliği en geç 1 dk içinde
+// geçerli olur); geçersiz belirteç 15 sn hatırlanır (hesap servisi boşuna yorulmasın). Hesap servisine ulaşılamazsa
+// istek reddedilir (503), yetki varsayılmaz.
+const oturumlar = new Map(), OTURUM_MS = 60e3, RED_MS = 15e3;
 async function kullanici(req) {
   const b = req.headers.authorization || '';
-  if (!b.startsWith('Bearer ')) return null;
+  if (!/^Bearer [A-Za-z0-9_-]{20,100}$/.test(b)) return null;
   const t = b.slice(7);
   const o = oturumlar.get(t);
   if (o && o.son > Date.now()) return o.k;
-  const r = await fetch(HESAP + '/ben', { headers: { Authorization: b } });
-  if (!r.ok) { oturumlar.delete(t); return null; }
-  const { kullanici: k } = await r.json();
-  oturumlar.set(t, { k, son: Date.now() + 5 * 60e3 });
+  oturumlar.delete(t);
+  let r;
+  try { r = await fetch(HESAP + '/ben', { headers: { Authorization: b }, signal: AbortSignal.timeout(5000) }); }
+  catch { throw Object.assign(new Error('Hesap servisine ulaşılamadı'), { durum: 503 }); }
+  if (r.status === 401) { oturumlar.set(t, { k: null, son: Date.now() + RED_MS }); return null; }
+  if (!r.ok) throw Object.assign(new Error('Hesap servisi yanıt vermedi'), { durum: 503 });
+  const k = (await r.json().catch(() => ({}))).kullanici || null;
+  oturumlar.set(t, { k, son: Date.now() + (k ? OTURUM_MS : RED_MS) });
   if (oturumlar.size > 200) oturumlar.delete(oturumlar.keys().next().value);
   return k;
 }
@@ -480,6 +486,7 @@ http.createServer(async (req, res) => {
       return yanit(res, 200, { ok: true });
     }
     if (yol === '/lg/durum' && req.method === 'GET') {
+      if (k.rol !== 'yonetici') return yanit(res, 403, { hata: 'Yalnız yönetici' });
       return yanit(res, 200, { ip: LG.ip || null, bagli: !!(LGC && LGC.connected), istem: LGS.istem, hata: LGS.hata, guc: LGS.guc, ses: LGS.ses, sessiz: LGS.sessiz });
     }
     if (yol === '/meross/giris' && req.method === 'POST') {
@@ -491,6 +498,7 @@ http.createServer(async (req, res) => {
       mrTara(); return yanit(res, 200, { bulunan: MR.cihazlar.filter(c => c.ip).length, cihaz: MR.cihazlar.length, taraniyor: true });
     }
     if (yol === '/meross/durum' && req.method === 'GET') {
+      if (k.rol !== 'yonetici') return yanit(res, 403, { hata: 'Yalnız yönetici' });
       return yanit(res, 200, { taraniyor: mrTaraniyor, son: MR.sonTarama || null,
         cihazlar: MR.cihazlar.map(c => ({ ad: c.ad, ip: c.ip || null })), surum: 5, bulut: !!(mq && mq.connected), bulutBilgi: !!MR.mqttDomain });
     }
