@@ -302,7 +302,8 @@ html.ph .hint{font-size:12px}
 html:not(.ph) .dk-md{display:inline-flex;width:max-content;max-width:100%;align-self:flex-start;justify-self:start;margin:0 0 10px}html:not(.ph) .dk-md button{min-width:88px}
 html:not(.ph) .ph-ls{padding:8px 0 40px}
 html:not(.ph) .ph-sheet{left:0;right:0;margin:0 auto;max-width:520px}
-#view-kontrol.dk-2d .rooms-ov{display:none}
+#view-kontrol.dk-2d .rooms-ov,#view-kontrol.dk-2d .room-views{display:none}
+html:not(.ph) .room-views{margin:10px auto 0}html:not(.ph) .floors button[aria-pressed=true]::after{content:"▾";margin-left:6px;opacity:.85}
 #view-kontrol.dk-ls .stage,#view-kontrol.dk-ls .room-views,#view-kontrol.dk-ls .rooms-ov,#view-kontrol.dk-ls .hint{display:none}
 .ph-rs{margin-bottom:10px}.ph-rh{display:flex;align-items:center;gap:10px}.ph-rh h3{margin:0;font-size:24px;font-weight:700;flex:1}.ph-rh small{color:#aab2dd;font-size:13px}
 .ph-bt{min-height:44px;padding:0 16px;border-radius:22px;background:#26346e;border:1px solid #3d4d8f;color:#e8ebff;font-size:13px;font-weight:600}
@@ -1354,7 +1355,7 @@ function setFloor(n){if(!FLS[n])n=1;FLOOR=n;try{localStorage.setItem('aksongur-k
   if(T&&T.setFloor)T.setFloor(n);
   renderRoomViews();
   lastSig=sig();rebuildAcc();update3D();renderSettings()}
-document.querySelectorAll('[data-floor]').forEach(b=>b.addEventListener('click',()=>{if(PH&&FLOOR===+b.dataset.floor)return;setFloor(+b.dataset.floor)}));
+document.querySelectorAll('[data-floor]').forEach(b=>b.addEventListener('click',()=>{if(FLOOR===+b.dataset.floor)return;setFloor(+b.dataset.floor)}));
 
 /* ---------- Hava durumu: Open-Meteo (anahtarsız), konum Pendik / İstanbul ---------- */
 const HOME={name:'Pendik, İstanbul',lat:40.8758,lon:29.2336};
@@ -1950,14 +1951,19 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
   }   /* yalnız telefon sonu */
   /* Masaüstü / tablet: 2B (üstten, telefondaki gibi) | Liste (telefondaki gibi) | 3B (şimdiki görünüm) */
   if(!PH){
-    const md=mk('div','ph-md dk-md','<button data-m="2d">2B</button><button data-m="ls">Liste</button><button data-m="3d">3B</button>');
-    view.insertBefore(md,wrap);let autoBal=false;
+    const md=mk('div','ph-menu','<button data-m="2d">2B</button><button data-m="ls">Liste</button><button data-m="3d">3B</button>');md.hidden=true;document.body.appendChild(md);let autoBal=false;
+    const rv=document.getElementById('roomViews'),ro=document.getElementById('roomsOv');if(rv&&ro)ro.before(rv);   /* oda görünümleri 3B sahnenin altına */
+    const fl2=document.querySelector('.floors'),hideD=()=>{md.hidden=true};addEventListener('scroll',hideD,{passive:true});addEventListener('resize',hideD);
+    const showD=()=>{const r=fl2.getBoundingClientRect();md.style.top=(r.bottom+6)+'px';md.style.left=r.left+'px';md.style.width=Math.max(r.width,270)+'px';md.hidden=false};
+    document.querySelectorAll('[data-floor]').forEach(b=>{b.addEventListener('pointerdown',()=>{b.__was=b.getAttribute('aria-pressed')==='true'},true);
+      b.addEventListener('click',()=>{if(b.__was){md.hidden?showD():hideD()}else hideD();b.__was=false})});
+    document.addEventListener('pointerdown',e=>{if(!md.hidden&&!md.contains(e.target)&&!e.target.closest('.floors'))hideD()});
     const apply=(m,save)=>{view.classList.toggle('dk-2d',m==='2d');md.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.m===m)));
       if(m==='ls')setMode(true,false);
       else{setMode(false,false);const top=m==='2d';if(T&&T.setTop&&top!==TOP)T.setTop(top);
         if(top){if(!on){set(true,true);autoBal=true}}else if(autoBal&&on){set(false,true);autoBal=false}}
       if(save)try{localStorage.setItem('aksongur-dkmod',m)}catch(e){}};
-    md.onclick=e=>{const b=e.target.closest('button');if(b)apply(b.dataset.m,true)};
+    md.onclick=e=>{const b=e.target.closest('button');if(b){apply(b.dataset.m,true);hideD()}};
     let m0='3d';try{m0=localStorage.getItem('aksongur-dkmod')||'3d'}catch(e){}apply(m0,false);
   }
   }
