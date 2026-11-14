@@ -1,6 +1,6 @@
 // Imou kamera köprüsü — Tekne paneli ve Akıllı ev paneli
 // Gizliler: IMOU_APPID, IMOU_SECRET. Erişim Aksi hesap belirteciyle (Authorization: Bearer) ve kameranın alan iznine göre verilir.
-const KAYNAK = 'https://taylanaksongur.github.io';
+const KAYNAKLAR = ['https://taylanaksongur.github.io', 'https://aksi.systems']; // izinli sayfa kaynakları
 const HOST = 'https://openapi-fk.easy4ip.com/openapi/';
 // alan: kameranın bağlı olduğu alan (ev | tekne). Hesap servisindeki KAMERA_ALAN ile aynı tutulmalı.
 const KAMERALAR = {
@@ -70,7 +70,8 @@ async function groupForAksi(env, auth) {
 
 export default {
   async fetch(req, env) {
-    const cors = { 'Access-Control-Allow-Origin': KAYNAK, 'Vary': 'Origin', 'Access-Control-Allow-Methods': 'GET, OPTIONS', 'Access-Control-Allow-Headers': 'Authorization', 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
+    const orj = req.headers.get('Origin');
+    const cors = { 'Access-Control-Allow-Origin': KAYNAKLAR.includes(orj) ? orj : KAYNAKLAR[0], 'Vary': 'Origin', 'Access-Control-Allow-Methods': 'GET, OPTIONS', 'Access-Control-Allow-Headers': 'Authorization', 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
     if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
     const u = new URL(req.url), out = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: cors });
     const o = await groupForAksi(env, req.headers.get('Authorization'));   // eski X-Key şifreleri emekli

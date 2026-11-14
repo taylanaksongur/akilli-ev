@@ -4,7 +4,7 @@
      CUBE_ADRES  iHost adresi, ör. http://192.168.1.50   (zorunlu)
      PORT        varsayılan 8787
      HESAP       varsayılan https://aksi-hesap.aksongur.workers.dev
-     KAYNAK      izinli sayfa kaynağı, varsayılan https://taylanaksongur.github.io
+     KAYNAK      izinli sayfa kaynakları (virgülle ayrılmış), varsayılan https://taylanaksongur.github.io,https://aksi.systems
    CUBE belirteci /data/cube-token dosyasında durur (yönetici panelden "Eşleştir" ile alır). */
 const http = require('http');
 const fs = require('fs');
@@ -12,7 +12,7 @@ const fs = require('fs');
 const CUBE = (process.env.CUBE_ADRES || '').replace(/\/+$/, '');
 const PORT = +process.env.PORT || 8787;
 const HESAP = process.env.HESAP || 'https://aksi-hesap.aksongur.workers.dev';
-const KAYNAK = process.env.KAYNAK || 'https://taylanaksongur.github.io';
+const KAYNAKLAR = (process.env.KAYNAK || 'https://taylanaksongur.github.io,https://aksi.systems').split(',').map(x => x.trim()).filter(Boolean);
 const TOKEN_DOSYA = '/data/cube-token';
 const API = CUBE + '/open-api/v1/rest';
 /* Hesap servisine kayıt anahtarı: ilk açılışta üretilir, /data'da saklanır. İlk kayıt anahtarı servise bağlar;
@@ -456,9 +456,11 @@ setTimeout(lgBaslat, 3000);
 
 // ---- HTTP
 function yanit(res, durum, veri) {
+  const orj = res.orj;
   res.writeHead(durum, {
     'Content-Type': 'application/json; charset=utf-8',
-    'Access-Control-Allow-Origin': KAYNAK,
+    'Access-Control-Allow-Origin': KAYNAKLAR.includes(orj) ? orj : KAYNAKLAR[0],
+    'Vary': 'Origin',
     'Access-Control-Allow-Headers': 'Authorization, Content-Type',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Max-Age': '600',
@@ -471,6 +473,7 @@ const govdeOku = req => new Promise((ok, red) => {
 });
 
 http.createServer(async (req, res) => {
+  res.orj = req.headers.origin;
   const yol = new URL(req.url, 'http://x').pathname.replace(/\/+$/, '') || '/';
   try {
     if (req.method === 'OPTIONS') return yanit(res, 204, {});
