@@ -2,12 +2,12 @@
 const KAPALI=false;
 const SURUM='v1',ONBELLEK='akilli-ev-'+SURUM;
 const ZAMAN_ASIMI=3500;
+const anahtar=u=>{const x=new URL(u);x.search='';x.hash='';return x.href};
 const SWR=/^https:\/\/(cdnjs\.cloudflare\.com\/ajax\/libs\/three\.js\/|fonts\.googleapis\.com\/|fonts\.gstatic\.com\/)/;
-self.addEventListener('install',e=>{self.skipWaiting()});
+self.addEventListener('install',e=>{self.skipWaiting();if(!KAPALI)e.waitUntil(caches.open(ONBELLEK).then(c=>fetch('index.html',{cache:'no-cache'}).then(r=>r.ok&&c.put(anahtar(new URL('index.html',self.registration.scope)),r))).catch(()=>{}))});
 self.addEventListener('activate',e=>{e.waitUntil((async()=>{
   for(const k of await caches.keys())if(k.startsWith('akilli-ev-')&&(KAPALI||k!==ONBELLEK))await caches.delete(k);
   await self.clients.claim()})())});
-const anahtar=u=>{const x=new URL(u);x.search='';x.hash='';return x.href};
 async function agOnce(req,key){
   const c=await caches.open(ONBELLEK);
   const ag=new Promise((ok,hata)=>{const ac=new AbortController(),t=setTimeout(()=>{ac.abort();hata(new Error('zaman'))},ZAMAN_ASIMI);
