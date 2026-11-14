@@ -130,14 +130,20 @@ async function cubeListe() {
   return l;
 }
 /* iHost olay akışı (SSE): Zigbee hareket sensörleri durumu yalnız olay olarak bildirir */
-const ANLIK = {}; const OLAYLAR = []; let sseTazeT = 0;
+const ANLIK = {}; const OLAYLAR = []; 
+/* Olay tazelemesi (trailing): ilk olaydan 300 ms sonra tazele; tazeleme sürerken gelen olaylar bir tur daha çalıştırır, hiçbiri kaçmaz */
+let sseZ = null, sseIsaret = false;
+function sseTazele() {
+  if (sseZ) { sseIsaret = true; return; }
+  sseZ = setTimeout(async () => { sseIsaret = false; try { await onTazele('ih'); } catch { } sseZ = null; if (sseIsaret) sseTazele(); }, 300);
+}
 function olayIsle(ad, ham) {
   let d; try { d = JSON.parse(ham); } catch { return; }
   const sn = d && d.endpoint && d.endpoint.serial_number, pl = d && d.payload; if (!sn || !pl || typeof pl !== 'object') return;
   const anahtarlar = Object.keys(pl);
   OLAYLAR.push(`${new Date().toISOString().slice(11, 19)} ${ad} ${sn} [${anahtarlar.join(',')}]`); if (OLAYLAR.length > 30) OLAYLAR.shift();
   const h = hareketOku(pl);
-  if (cubeToken && Date.now() - sseTazeT > 2000) { sseTazeT = Date.now(); setTimeout(() => onTazele('ih'), 300); }   /* durum olayı: listeyi hemen tazele */
+  if (cubeToken) sseTazele();   /* durum olayı: listeyi hemen tazele */
   const an = ANLIK[sn] = Object.assign(ANLIK[sn] || { k: [] }, { t: Date.now() });
   an.k = Array.from(new Set(an.k.concat(anahtarlar)));
   if (h !== null) {
@@ -171,11 +177,12 @@ setInterval(sseBaslat, 10000); setTimeout(sseBaslat, 2000);
 
 /* Cihaz listesi önbelleği: GET /cihazlar anında döner, kaynaklar (iHost, Meross, Cosa) arkada ayrı ayrı tazelenir.
    Böylece yavaş bir kaynak (kapalı Meross, bulut) tüm listeyi bekletmez. */
-const ON = { ih: { l: [], t: 0, d: 0 }, mr: { l: [], t: 0, d: 0 }, cs: { l: [], t: 0, d: 0 } }, onIs = {};
+const ON = { ih: { l: [], t: 0, d: 0, dt: 0, h: 0 }, mr: { l: [], t: 0, d: 0, dt: 0, h: 0 }, cs: { l: [], t: 0, d: 0, dt: 0, h: 0 } }, onIs = {};
 function onTazele(a) {
   if (onIs[a]) return onIs[a];
   const f = a === 'ih' ? () => (cubeToken ? cubeListe() : Promise.resolve([])) : a === 'mr' ? () => mrListe() : () => csListe();
-  return onIs[a] = f().then(l => { ON[a].l = l; ON[a].t = Date.now(); }).catch(() => { }).finally(() => { ON[a].d = 1; onIs[a] = null; });
+  ON[a].dt = Date.now();   /* son DENEME zamanı (başarısız olsa da) */
+  return onIs[a] = f().then(l => { ON[a].l = l; ON[a].t = Date.now(); ON[a].h = 0; }).catch(() => { ON[a].h++; }).finally(() => { ON[a].d = 1; onIs[a] = null; });
 }
 /* Uyarlamalı yoklama: son KOPRU_AKTIF_MS içinde istek (GET /cihazlar, POST /cihaz) geldiyse hızlı, gelmediyse yavaş aralık.
    Cosa hiçbir zaman 20 sn'den sık yoklanmaz; cubeListe yavaş modda da 15 sn'de bir çalışır (sonHareket kaçmasın). */
@@ -183,12 +190,17 @@ const AKTIF_MS = +process.env.KOPRU_AKTIF_MS || 60e3, HIZLI_MS = +process.env.KO
 const ARALIK = { hizli: { ih: HIZLI_MS, mr: HIZLI_MS * 2, cs: Math.max(HIZLI_MS * 5, process.env.KOPRU_HIZLI_MS ? 0 : 20000) }, yavas: { ih: YAVAS_MS, mr: YAVAS_MS * 2, cs: YAVAS_MS * 4 } };
 let sonIstekT = 0; const MS = { son: null };
 const hizliMi = () => Date.now() - sonIstekT < AKTIF_MS;
+/* Hata sonrası geri çekilme: ardışık hata başına aralık 2x, en çok GERI_MS (60 sn); Cosa hatadan sonra 60 sn'den sık denenmez; başarıda sıfırlanır */
+const GERI_MS = +process.env.KOPRU_GERI_MS || 60e3;
+const bekle = (a, ar) => { const h = ON[a].h; if (!h) return ar; return Math.max(ar, a === 'cs' ? GERI_MS : 0, Math.min(ar * 2 ** h, GERI_MS)); };
+const vakit = (a, ar, pay = 0) => Date.now() - ON[a].dt >= bekle(a, ar) - pay;
 const aralik = a => ARALIK[hizliMi() ? 'hizli' : 'yavas'][a];
+/* Bilinçli ödün: yavaş modda ilk GET eski önbelleği döndürür (beklemez); istekGeldi arkada tazeler, sonraki GET güncel olur. */
 function istekGeldi() {   /* uyanış: eski önbelleği hemen arkada yenile */
   sonIstekT = Date.now();
-  for (const a of ['ih', 'mr', 'cs']) if (ON[a].d && Date.now() - ON[a].t > ARALIK.hizli[a]) onTazele(a);
+  for (const a of ['ih', 'mr', 'cs']) if (ON[a].d && vakit(a, ARALIK.hizli[a])) onTazele(a);
 }
-setInterval(() => { for (const a of ['ih', 'mr', 'cs']) if (Date.now() - ON[a].t >= aralik(a) - 250) onTazele(a); }, Math.max(100, Math.min(1000, HIZLI_MS / 2)));
+setInterval(() => { for (const a of ['ih', 'mr', 'cs']) if (vakit(a, aralik(a), 250)) onTazele(a); }, Math.max(100, Math.min(1000, HIZLI_MS / 2)));
 setTimeout(() => { onTazele('ih'); onTazele('mr'); onTazele('cs'); }, 500);
 /* Komut gittikten sonra önbelleği hemen güncelle (panel eski durumu görüp ışığı geri çevirmesin), sonra gerçeği oku */
 function onYaz(kimlik, b) {
