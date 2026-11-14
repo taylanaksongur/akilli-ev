@@ -130,13 +130,14 @@ async function cubeListe() {
   return l;
 }
 /* iHost olay akışı (SSE): Zigbee hareket sensörleri durumu yalnız olay olarak bildirir */
-const ANLIK = {}; const OLAYLAR = [];
+const ANLIK = {}; const OLAYLAR = []; let sseTazeT = 0;
 function olayIsle(ad, ham) {
   let d; try { d = JSON.parse(ham); } catch { return; }
   const sn = d && d.endpoint && d.endpoint.serial_number, pl = d && d.payload; if (!sn || !pl || typeof pl !== 'object') return;
   const anahtarlar = Object.keys(pl);
   OLAYLAR.push(`${new Date().toISOString().slice(11, 19)} ${ad} ${sn} [${anahtarlar.join(',')}]`); if (OLAYLAR.length > 30) OLAYLAR.shift();
   const h = hareketOku(pl);
+  if (cubeToken && Date.now() - sseTazeT > 2000) { sseTazeT = Date.now(); setTimeout(() => onTazele('ih'), 300); }   /* durum olayı: listeyi hemen tazele */
   const an = ANLIK[sn] = Object.assign(ANLIK[sn] || { k: [] }, { t: Date.now() });
   an.k = Array.from(new Set(an.k.concat(anahtarlar)));
   if (h !== null) {
@@ -176,7 +177,18 @@ function onTazele(a) {
   const f = a === 'ih' ? () => (cubeToken ? cubeListe() : Promise.resolve([])) : a === 'mr' ? () => mrListe() : () => csListe();
   return onIs[a] = f().then(l => { ON[a].l = l; ON[a].t = Date.now(); }).catch(() => { }).finally(() => { ON[a].d = 1; onIs[a] = null; });
 }
-setInterval(() => onTazele('ih'), 4000); setInterval(() => onTazele('mr'), 8000); setInterval(() => onTazele('cs'), 20000);
+/* Uyarlamalı yoklama: son KOPRU_AKTIF_MS içinde istek (GET /cihazlar, POST /cihaz) geldiyse hızlı, gelmediyse yavaş aralık.
+   Cosa hiçbir zaman 20 sn'den sık yoklanmaz; cubeListe yavaş modda da 15 sn'de bir çalışır (sonHareket kaçmasın). */
+const AKTIF_MS = +process.env.KOPRU_AKTIF_MS || 60e3, HIZLI_MS = +process.env.KOPRU_HIZLI_MS || 4000, YAVAS_MS = +process.env.KOPRU_YAVAS_MS || 15000;
+const ARALIK = { hizli: { ih: HIZLI_MS, mr: HIZLI_MS * 2, cs: Math.max(HIZLI_MS * 5, process.env.KOPRU_HIZLI_MS ? 0 : 20000) }, yavas: { ih: YAVAS_MS, mr: YAVAS_MS * 2, cs: YAVAS_MS * 4 } };
+let sonIstekT = 0; const MS = { son: null };
+const hizliMi = () => Date.now() - sonIstekT < AKTIF_MS;
+const aralik = a => ARALIK[hizliMi() ? 'hizli' : 'yavas'][a];
+function istekGeldi() {   /* uyanış: eski önbelleği hemen arkada yenile */
+  sonIstekT = Date.now();
+  for (const a of ['ih', 'mr', 'cs']) if (ON[a].d && Date.now() - ON[a].t > ARALIK.hizli[a]) onTazele(a);
+}
+setInterval(() => { for (const a of ['ih', 'mr', 'cs']) if (Date.now() - ON[a].t >= aralik(a) - 250) onTazele(a); }, Math.max(100, Math.min(1000, HIZLI_MS / 2)));
 setTimeout(() => { onTazele('ih'); onTazele('mr'); onTazele('cs'); }, 500);
 /* Komut gittikten sonra önbelleği hemen güncelle (panel eski durumu görüp ışığı geri çevirmesin), sonra gerçeği oku */
 function onYaz(kimlik, b) {
@@ -500,28 +512,28 @@ http.createServer(async (req, res) => {
     if (yol === '/meross/durum' && req.method === 'GET') {
       if (k.rol !== 'yonetici') return yanit(res, 403, { hata: 'Yalnız yönetici' });
       return yanit(res, 200, { taraniyor: mrTaraniyor, son: MR.sonTarama || null,
-        cihazlar: MR.cihazlar.map(c => ({ ad: c.ad, ip: c.ip || null })), surum: 5, bulut: !!(mq && mq.connected), bulutBilgi: !!MR.mqttDomain });
+        cihazlar: MR.cihazlar.map(c => ({ ad: c.ad, ip: c.ip || null })), surum: 6, bulut: !!(mq && mq.connected), bulutBilgi: !!MR.mqttDomain });
     }
     if (yol === '/cihazlar' && req.method === 'GET') {
       const ilk = ['ih', 'mr', 'cs'].filter(a => !ON[a].d);
       if (ilk.length) await Promise.race([Promise.all(ilk.map(onTazele)), new Promise(r => setTimeout(r, 4000))]);
-      const simdi = Date.now(); ['ih', 'mr', 'cs'].forEach(a => { if (simdi - ON[a].t > 3000) onTazele(a); });
+      istekGeldi(); const simdi = Date.now();
       const ih = ON.ih.l, mr = ON.mr.l, cs = ON.cs.l.slice();
       if (LG.ip) cs.push(lgBilgi());
-      return yanit(res, 200, { yas: { ih: ON.ih.t ? simdi - ON.ih.t : null, mr: ON.mr.t ? simdi - ON.mr.t : null, cs: ON.cs.t ? simdi - ON.cs.t : null }, eski: !!(cubeToken && (!ON.ih.t || simdi - ON.ih.t > 20000)), cihazlar: ih.concat(mr, cs), meross: { bagli: !!MR.key, cihaz: MR.cihazlar.length }, cosa: { bagli: !!CS.eposta, cihaz: CS.cihazlar.length }, lg: { ip: LG.ip || null, bagli: !!(LGC && LGC.connected), istem: LGS.istem } });
+      return yanit(res, 200, { ms: MS.son, mod: hizliMi() ? 'hizli' : 'yavas', yas: { ih: ON.ih.t ? simdi - ON.ih.t : null, mr: ON.mr.t ? simdi - ON.mr.t : null, cs: ON.cs.t ? simdi - ON.cs.t : null }, eski: !!(cubeToken && (!ON.ih.t || simdi - ON.ih.t > 20000)), cihazlar: ih.concat(mr, cs), meross: { bagli: !!MR.key, cihaz: MR.cihazlar.length }, cosa: { bagli: !!CS.eposta, cihaz: CS.cihazlar.length }, lg: { ip: LG.ip || null, bagli: !!(LGC && LGC.connected), istem: LGS.istem } });
     }
     const m = yol.match(/^\/cihaz\/([^/]+)$/);
     if (m && req.method === 'POST') {
-      const b = await govdeOku(req), state = {};
+      istekGeldi(); const b = await govdeOku(req), state = {}, t0 = Date.now();
       const kimlik = decodeURIComponent(m[1]);
-      if (kimlik.startsWith('lg:')) { await lgKomut(b); return yanit(res, 200, { ok: true }); }
+      if (kimlik.startsWith('lg:')) { await lgKomut(b); return yanit(res, 200, { ok: true, ms: MS.son = Date.now() - t0 }); }
       if (kimlik.startsWith('cosa:')) {
         if (!Number.isFinite(b.hedef) && typeof b.acik !== 'boolean') return yanit(res, 400, { hata: 'hedef ya da acik gerekli' });
-        await csKomut(kimlik, b); onYaz(kimlik, b); return yanit(res, 200, { ok: true });
+        await csKomut(kimlik, b); onYaz(kimlik, b); return yanit(res, 200, { ok: true, ms: MS.son = Date.now() - t0 });
       }
       if (kimlik.startsWith('meross:')) {
         if (typeof b.acik !== 'boolean') return yanit(res, 400, { hata: 'acik gerekli' });
-        await mrKomut(kimlik, b.acik); onYaz(kimlik, b); return yanit(res, 200, { ok: true });
+        await mrKomut(kimlik, b.acik); onYaz(kimlik, b); return yanit(res, 200, { ok: true, ms: MS.son = Date.now() - t0 });
       }
       const [seri, kanal] = kimlik.split(':');
       if (typeof b.acik === 'boolean') {
@@ -532,7 +544,7 @@ http.createServer(async (req, res) => {
       if (!Object.keys(state).length) return yanit(res, 400, { hata: 'acik ya da parlaklik gerekli' });
       await cube('PUT', '/devices/' + encodeURIComponent(seri), { state });
       onYaz(kimlik, b);
-      return yanit(res, 200, { ok: true });
+      return yanit(res, 200, { ok: true, ms: MS.son = Date.now() - t0 });
     }
     yanit(res, 404, { hata: 'Bulunamadı' });
   } catch (e) {
