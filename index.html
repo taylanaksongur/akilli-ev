@@ -1667,7 +1667,7 @@ function errToast(name,msg){errQ.push(name);clearTimeout(errT);errT=setTimeout((
 const _patchAcc=patchAcc;
 patchAcc=function(id,patch){const a=ACC[id];const prev=a?{on:a.on,bri:a.bri,setT:a.setT}:null;if(a&&'setT' in patch)a._st=Date.now();if(a&&('on' in patch||'bri' in patch))a._cmd=Date.now();const r=_patchAcc(id,patch);
   if(a&&(BRG(a.src))&&a.extId&&ihostHazir()&&('on' in patch||'bri' in patch||'setT' in patch)){
-    const g={};if('on' in patch)g.acik=!!patch.on;if('bri' in patch&&Number.isFinite(patch.bri))g.parlaklik=patch.bri;
+    const g={};if('on' in patch)g.acik=!!patch.on;if('bri' in patch&&a.dim&&Number.isFinite(patch.bri))g.parlaklik=patch.bri;   /* dimmer olmayan cihaza parlaklık gitmesin: iHost reddedip 502 veriyordu (modlarda aç + %bri birlikte gidiyordu) */
     if('setT' in patch&&a.src==='Cosa'&&Number.isFinite(patch.setT))g.hedef=patch.setT;if(!Object.keys(g).length)return r;
     DEVST[id]={p:1};ihostIstek('/cihaz/'+encodeURIComponent(a.extId),g).then(()=>{delete DEVST[id]}).catch(e=>{DEVST[id]={err:1};if(prev&&ACC[id])_patchAcc(id,prev);errToast(a.name,e.message)})}
   return r};
