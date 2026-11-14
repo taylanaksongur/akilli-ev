@@ -1579,6 +1579,16 @@ init3D();renderSettings();setFloor(FLOOR);initStore().then(watchPin);initWeather
 /* ---------- iHost köprüsü (ihost-koprusu/kopru.js) ---------- */
 const IHKEY='aksongur-ihost';let IHOST={url:''};try{Object.assign(IHOST,JSON.parse(localStorage.getItem(IHKEY)||'{}'))}catch(e){}
 let IHLIST=null;
+/* ---------- Ortak uyarı merkezi (Aksi ana ekranı okur) ----------
+   Sözleşme: localStorage 'aksi-uyarilar' = [{id,kaynak:'ev'|'tekne',mesaj,seviye:'bilgi'|'uyari'|'tehlike',t,bitti}].
+   uyariAc(anahtar,...) aynı anahtarla açık uyarı varsa yenisini yazmaz; uyariKapat(anahtar) açık olanı bitti yapar. */
+function uyariOku(){try{const d=JSON.parse(localStorage.getItem('aksi-uyarilar'));return Array.isArray(d)?d:[]}catch(e){return[]}}
+function uyariYaz(d){try{const bit=d.filter(u=>u.bitti).sort((a,b)=>b.t-a.t).slice(40);localStorage.setItem('aksi-uyarilar',JSON.stringify(d.filter(u=>!bit.includes(u))))}catch(e){}}
+function uyariAc(anahtar,mesaj,seviye){const d=uyariOku();if(d.some(u=>u&&u.kaynak==='ev'&&!u.bitti&&String(u.id).startsWith(anahtar+':')))return;
+  const t=Date.now();d.push({id:anahtar+':'+t,kaynak:'ev',mesaj,seviye:seviye||'uyari',t,bitti:false});uyariYaz(d)}
+function uyariKapat(anahtar){const d=uyariOku();let n=0;d.forEach(u=>{if(u&&u.kaynak==='ev'&&!u.bitti&&String(u.id).startsWith(anahtar+':')){u.bitti=true;n++}});if(n)uyariYaz(d)}
+function uyariDurum(anahtar,sorunVar,mesaj,seviye){sorunVar?uyariAc(anahtar,mesaj,seviye):uyariKapat(anahtar)}
+let IHKOP=0;  /* üst üste başarısız köprü denemesi */
 const IHOST_TABAN=((window.hesap&&hesap.SUNUCU)||'https://aksi-hesap.aksongur.workers.dev')+'/kopru/ihost';  /* hesap servisi köprüye iletir */
 const ihostHazir=()=>{try{return !!localStorage.getItem('aksi-oturum')}catch(e){return false}};
 $('#ihostIp').value=IHOST.url;
@@ -1593,20 +1603,22 @@ async function ihostIstek(yol,govde){
   const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.hata||('Hata '+r.status));return j}
 async function ihostListe(goster){const m=$('#ihostMsg');if(goster)m.textContent='Bağlanıyor…';
   try{let j=null;if(window.__ihOn){const p=window.__ihOn;window.__ihOn=null;j=await p}if(!j)j=await ihostIstek('/cihazlar');
-    if(j.eski&&Date.now()-(ihostListe.uy||0)>60000){ihostListe.uy=Date.now();toast('iHost’tan güncel durum alınamıyor; ışık durumları eski olabilir')}IHLIST=j.cihazlar||[];
+    if(j.eski&&Date.now()-(ihostListe.uy||0)>60000){ihostListe.uy=Date.now();toast('iHost’tan güncel durum alınamıyor; ışık durumları eski olabilir')}IHLIST=j.cihazlar||[];IHKOP=0;uyariKapat('ihost-baglanti');uyariDurum('ihost-eski',!!j.eski,'iHost’tan güncel durum alınamıyor; ışık durumları eski olabilir','uyari');
+    if(j.cosa)uyariDurum('cosa-baglanti',j.cosa.bagli===false&&!!climateAcc(),'Termostat (Cosa) bağlantısı yok','uyari');
     $('#ihostList').innerHTML=IHLIST.map(c=>`<option value="${esc(c.id)}">${esc(c.ad)}${c.cevrimici?'':' (çevrim dışı)'}</option>`).join('');
     const nM=IHLIST.filter(c=>c.kaynak==='Meross').length,nC=IHLIST.filter(c=>c.kaynak==='Cosa').length,nL=IHLIST.filter(c=>c.kaynak==='LG').length;m.textContent=`Bağlı · ${IHLIST.length-nM-nC-nL} cihaz`;
     if(j.lg&&$('#lgMsg')&&j.lg.ip)$('#lgMsg').textContent=j.lg.bagli?'Bağlı · '+j.lg.ip:j.lg.istem?'TV ekranındaki izin sorusuna Evet de':'TV kapalı ya da ulaşılamıyor';
     if(j.cosa&&$('#cosaMsg'))$('#cosaMsg').textContent=j.cosa.bagli?`Bağlı · ${nC} termostat`:'Bağlı değil';
     if(j.meross){$('#merossMsg').textContent=j.meross.bagli?`Bağlı · ${nM} kanal`+(j.meross.cihaz&&!nM?' (ağda aranıyor)':''):'Bağlı değil'}ihostDurumAl();
     if(edit&&(BRG(edit.src))&&!document.querySelector('select#fExt')){readForm();renderSide()}}
-  catch(e){if(goster)m.textContent=e.message}}
+  catch(e){if(goster)m.textContent=e.message;if(ihostHazir()&&++IHKOP>=3)uyariAc('ihost-baglanti','Ev köprüsüne (iHost) ulaşılamıyor','tehlike')}}
 async function ihostEslestir(){const m=$('#ihostMsg');m.textContent='Eşleştiriliyor…';
   try{await ihostIstek('/eslestir',{});m.textContent='Eşleşti';ihostListe(true)}catch(e){m.textContent=e.message}}
 /* iHost'taki gerçek durumu panele yansıt (yalnız değişenler, sunucuya geri yazmadan) */
 function ihostDurumAl(){if(!IHLIST)return;let n=0;
   for(const id in DEVST){const a=ACC[id],c=a&&IHLIST.find(x=>x.id===a.extId);if(DEVST[id].err&&(!c||c.cevrimici!==false)){delete DEVST[id];n++}}
   accList().forEach(a=>{if(!BRG(a.src)||!a.extId)return;const c=IHLIST.find(x=>x.id===a.extId);if(!c)return;
+    if(a.kind==='sensor'||a.kind==='climate')uyariDurum('cihaz-'+a.id,c.cevrimici===false,a.name+(a.kind==='climate'?' (termostat)':' (sensör)')+' çevrim dışı','uyari');
     if(a.kind==='climate'&&c.kaynak==='Cosa'){if(typeof c.sicaklik==='number'&&a.curT!==c.sicaklik){a.curT=c.sicaklik;n++}
       if(typeof c.hedef==='number'&&a.setT!==c.hedef&&!DEVST[a.id]&&Date.now()-(a._st||0)>20000){a.setT=c.hedef;n++}}
     if(a.kind==='sensor'){const d=typeof c.hareket==='boolean'?c.hareket:null;
