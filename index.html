@@ -303,6 +303,8 @@ html:not(.ph) .dk-md{display:inline-flex;width:max-content;max-width:100%;align-
 html:not(.ph) .ph-ls{padding:8px 0 40px}
 html:not(.ph) .ph-sheet{left:0;right:0;margin:0 auto;max-width:520px}
 #view-kontrol.dk-2d .rooms-ov,#view-kontrol.dk-2d .room-views{display:none}
+.stage-ctrl.dk-alt{position:static;margin:10px 0 0}.stage-ctrl.dk-alt button{min-height:44px;padding:0 16px;font-size:13px}
+.dk-sc{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 0}.dk-sc[hidden]{display:none}.dk-sc button{flex:1 1 120px;min-height:52px;padding:0 16px;border-radius:14px;background:var(--sc);color:#fff;font-family:var(--f-display);font-size:14px;font-weight:600;border:0}.dk-sc button:active{filter:brightness(1.15)}
 html:not(.ph) .room-views{margin:10px auto 0}html:not(.ph) .floors button[aria-pressed=true]::after{content:"▾";margin-left:6px;opacity:.85}
 #view-kontrol.dk-ls .stage,#view-kontrol.dk-ls .room-views,#view-kontrol.dk-ls .rooms-ov,#view-kontrol.dk-ls .hint{display:none}
 .ph-rs{margin-bottom:10px}.ph-rh{display:flex;align-items:center;gap:10px}.ph-rh h3{margin:0;font-size:24px;font-weight:700;flex:1}.ph-rh small{color:#aab2dd;font-size:13px}
@@ -969,8 +971,8 @@ function init3D(){
   let theta=(PH&&innerHeight>innerWidth)?Math.PI/2:0,phi=PH?0.02:0.72,zoom=1,baseR=14;
   function fit(){const w=stage.clientWidth,h=stage.clientHeight;if(!w||!h)return;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false);
     const vf=camera.fov*Math.PI/360,hf=Math.atan(Math.tan(vf)*camera.aspect);
-    if(TOP){const por=innerHeight>innerWidth;theta=por?Math.PI/2:0;phi=0.02;const hb=houseBox(true),sw=por?hb.hd:hb.hw,sh=por?hb.hw:hb.hd,mx=por?30:34,my=por?34:34;
-      {const ppu=(w-2*mx)/(2*sw),need=Math.round(2*sh*ppu+2*my),cap=Math.max(300,Math.round(innerHeight*(por?.86:.72)-(por?60:0))),hh=Math.max(260,Math.min(need,cap));
+    if(TOP){const por=innerHeight>innerWidth;theta=por?Math.PI/2:0;phi=0.02;const hb=houseBox(true),sw=por?hb.hd:hb.hw,sh=por?hb.hw:hb.hd,mx=PH?(por?30:34):10,my=PH?34:12;
+      {const ppu=(w-2*mx)/(2*sw),need=Math.round(2*sh*ppu+2*my),cap=Math.max(300,PH?Math.round(innerHeight*(por?.86:.72)-(por?60:0)):(()=>{const q=sel=>{const e=document.querySelector(sel);return e&&e.offsetParent?e.offsetHeight+10:0},hn=document.querySelector('#view-kontrol .hint');return Math.round(innerHeight-(stage.getBoundingClientRect().top+scrollY)-q('.stage-ctrl.dk-alt')-q('.dk-sc')-(hn?hn.offsetHeight+12:0)-20)})())   /* tablet: alttaki düğmeler ve modlar ekrana sığsın */,hh=Math.max(260,Math.min(need,cap));
        if(Math.abs(hh-h)>3&&!stage.__ph){stage.__ph=1;stage.style.height=hh+'px';stage.style.minHeight='0';requestAnimationFrame(()=>{stage.__ph=0;fit()});return}}
       baseR=Math.max(sw/(Math.tan(hf)*Math.max(.3,(w-2*mx)/w)),sh/(Math.tan(vf)*Math.max(.3,(h-2*my)/h)))}
     else baseR=Math.max(camHW/Math.tan(hf),(camHD+1.2*Math.sin(phi))/Math.tan(vf))*1.02;needs=true}
@@ -1958,7 +1960,13 @@ const BAL={on:false,exp:new Set(),kick:()=>{}};
     document.querySelectorAll('[data-floor]').forEach(b=>{b.addEventListener('pointerdown',()=>{b.__was=b.getAttribute('aria-pressed')==='true'},true);
       b.addEventListener('click',()=>{if(b.__was){md.hidden?showD():hideD()}else hideD();b.__was=false})});
     document.addEventListener('pointerdown',e=>{if(!md.hidden&&!md.contains(e.target)&&!e.target.closest('.floors'))hideD()});
-    const apply=(m,save)=>{view.classList.toggle('dk-2d',m==='2d');md.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.m===m)));
+    const ctl=stage.querySelector('.stage-ctrl'),scR=mk('div','dk-sc');scR.hidden=true;stage.after(scR);
+    const runDk=x=>{const ch=[];Object.values(ACC).forEach(a=>{const pp=x.fn(a);if(pp&&Object.keys(pp).some(k=>a[k]!==pp[k]))ch.push([a.id,pp])});
+      lastLocal=Date.now()+ch.length*120;ch.forEach(([id,pp],i)=>setTimeout(()=>patchAcc(id,pp),i*120));   /* sırayla: köprü bir anda yüklenmesin */
+      toast('“'+x.name+'” çalıştı'+(ch.length?'':' (değişen yok)'))};
+    const fillDk=()=>{scR.innerHTML='';getScenes().forEach(x=>{const b=mk('button','','');b.type='button';b.style.setProperty('--sc',x.c);b.textContent=x.name;b.title=x.sub||'';b.onclick=()=>runDk(x);scR.appendChild(b)})};
+    const alt=on2=>{if(!ctl)return;if(on2){ctl.classList.add('dk-alt');stage.after(ctl);fillDk();scR.hidden=false}else{ctl.classList.remove('dk-alt');stage.appendChild(ctl);scR.hidden=true}};
+    const apply=(m,save)=>{view.classList.toggle('dk-2d',m==='2d');alt(m==='2d');md.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.m===m)));
       if(m==='ls')setMode(true,false);
       else{setMode(false,false);const top=m==='2d';if(T&&T.setTop&&top!==TOP)T.setTop(top);
         if(top){if(!on){set(true,true);autoBal=true}}else if(autoBal&&on){set(false,true);autoBal=false}}
