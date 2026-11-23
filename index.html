@@ -473,8 +473,9 @@ const $=s=>document.querySelector(s);
 const PHQ=(location.search.match(/[?&]mod=(\w+)/)||[])[1];
 const PH=PHQ==='tel'?true:PHQ==='klasik'?false:(matchMedia('(pointer:coarse)').matches&&Math.min(screen.width,screen.height)<600);
 if(PH)document.documentElement.classList.add('ph');
-/* Hafif mod (yavaş tabletler): yalnızca ?hafif=1 ile açılır. Işık başına PointLight, gölge ve kenar yumuşatma kapalı, piksel oranı 1. */
-const HAFIF=/[?&]hafif=1/.test(location.search);
+/* Hafif mod (yavaş tabletler): zayıf dokunmatik cihazda (≤3 GB bellek veya ≤4 çekirdek) otomatik açılır; ?hafif=1 zorlar, ?hafif=0 kapatır. Işık başına PointLight, gölge ve kenar yumuşatma kapalı, piksel oranı 1. */
+const HAFIFQ=(location.search.match(/[?&]hafif=(\d)/)||[])[1];
+const HAFIF=HAFIFQ==='1'?true:HAFIFQ==='0'?false:(matchMedia('(pointer:coarse)').matches&&((navigator.deviceMemory||8)<=3||(navigator.hardwareConcurrency||8)<=4));
 let TOP=PH;   /* üstten bakış (2B): telefonda hep, masaüstünde 2B modunda */
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function toast(t){const el=$('#toast');el.textContent=t;el.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.remove('show'),1900)}
@@ -1064,7 +1065,7 @@ function rebuildAcc(){
   const A=(geo,m,x,y,z)=>add(geo,m,x,y,z,0,g);
   const pl=(id,x,y,z,max,dist)=>{if(HAFIF)return;const l=new THREE.PointLight('#ffb35a',0,(dist||4.2)*1.1,2);l.position.set(x,y,z);l.userData={id,max:max*1.35,target:0};g.add(l);T.PL.push(l)};
   const halo=(id,x,y,z,s)=>{const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:haloTex,blending:THREE.AdditiveBlending,depthWrite:false,transparent:true,opacity:0}));
-    sp.position.set(x,y,z);sp.scale.set(s,s,1);sp.userData={id,target:0};g.add(sp);T.HALO.push(sp)};
+    if(HAFIF)s*=1.7;sp.position.set(x,y,z);sp.scale.set(s,s,1);sp.userData={id,target:0};g.add(sp);T.HALO.push(sp)};
   const emis=(o,id)=>{o.castShadow=false;o.userData.id=id;T.EMIS.push(o);return o};
   const hit=(id,x,y,z,geo)=>{const h=new THREE.Mesh(geo||new THREE.SphereGeometry(0.32,8,6),new THREE.MeshBasicMaterial({visible:false}));h.position.set(x,y,z);h.userData={id};g.add(h);T.HIT.push(h);return h};
   const OFF='#b4bbe6';const basic=()=>new THREE.MeshBasicMaterial({color:OFF});
