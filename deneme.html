@@ -548,11 +548,11 @@ const FLS={
     [[1653,42,1665,229,2,'#2a2f45',6],[1607,300,1619,696,5,'#2a2f45',6],[1653,777,1665,963,2,'#2a2f45',6]],
     [-10,20,1964,1180],[972,612,7.0,4.6]),
  3:mkFloor(T3,{
-   sol3:['Sol oda','#f2a93b','wood',[210,520],[[20,61],[403,61],[403,992],[20,992]]],
+   sol3:['Sol teras','#f2a93b','stone',[210,520],[[20,61],[403,61],[403,992],[20,992]]],
    calisma:['Çalışma odası','#4a63ff','wood',[820,440],[[433,61],[1029,61],[1029,125],[1105,125],[1105,730],[814,730],[814,679],[583,679],[583,709],[452,709],[452,679],[433,679]]],
    banyo3:['Banyo','#4fc3ff','stone',[1010,880],[[814,758],[973,758],[973,730],[1105,730],[1105,992],[814,992]]],
    merdiven3:['Merdiven','#ff6b81','void',[608,860],[[433,708],[783,708],[783,992],[433,992]]],
-   sag3:['Sağ oda','#36d39a','wood',[1385,520],[[1134,61],[1635,61],[1635,992],[1134,992]]]
+   sag3:['Sağ teras','#36d39a','stone',[1385,520],[[1134,61],[1635,61],[1635,992],[1134,992]]]
   },[[-10,30,1677,31],[-10,61,30,961],[-10,992,1677,30],[1635,61,32,931],
      [403,61,30,931],[1105,61,29,931],[1029,61,30,64],[1059,100,46,25],
      [433,679,19,30],[583,678,231,30],[783,708,31,284],[814,730,159,28]],
@@ -993,7 +993,7 @@ function init3D(){
   /* ---------- Gerçekçi 3D (deneme): Blender'da pişmiş ışık/gölge + gerçek dokular. Gündüz/gece saate göre ---------- */
   (function(){
     if(!THREE.GLTFLoader||HAFIF)return;
-    const BAKED={1:'bake/k1'};const LT=[];root.traverse(o=>{if(o.isLight&&!o.isPointLight)LT.push([o,o.intensity])});
+    const BAKED={1:'bake/k1',2:'bake/k2',3:'bake/k3'};const LT=[];root.traverse(o=>{if(o.isLight&&!o.isPointLight)LT.push([o,o.intensity])});
     const TL=new THREE.TextureLoader(),tx=u=>{const t=TL.load(u,()=>{needs=true});t.encoding=THREE.sRGBEncoding;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=8;return t};
     const SW={T_ahsap:tx('tex/ahsap.jpg'),T_tas:tx('tex/tas.jpg'),T_cim:tx('tex/cim.jpg')};
     const MATS={},NT=new THREE.Color(0.72,0.78,1),WT=new THREE.Color(1,1,1);let gece=null;
@@ -1008,10 +1008,10 @@ function init3D(){
       renderer.toneMappingExposure=baked&&!g?0.95:1.15;renderer.shadowMap.needsUpdate=true;needs=true}
     for(const k in BAKED){const lm=TL.load(BAKED[k]+'_isik.jpg',()=>{needs=true});lm.encoding=THREE.sRGBEncoding;lm.flipY=false;
       new THREE.GLTFLoader().load(BAKED[k]+'.glb',gl=>{const F=FG[k];MATS[k]=[];
-        F.children.slice().forEach(o=>{o.traverse(m=>{if(m.isMesh&&!(m.material&&m.material.transparent))m.visible=false})});
+        F.children.slice().forEach(o=>{o.traverse(m=>{if(m.isMesh&&!(m.material&&m.material.transparent))m.visible=false})});const B3=new THREE.Box3().setFromObject(gl.scene);
         gl.scene.traverse(m=>{if(!m.isMesh)return;m.castShadow=false;m.receiveShadow=true;const g=m.geometry;if(!g.attributes.uv2)return;
-          const mt=m.material;mt.lightMap=lm;mt.envMapIntensity=0;mt.metalness=0;
-          const sw=SW[(mt.name||'').split('.')[0]];if(sw&&mt.map){const t=sw.clone();t.needsUpdate=true;t.repeat.copy(mt.map.repeat).multiplyScalar(0.6);t.offset.copy(mt.map.offset);mt.map=t}
+          let mt=m.material;mt.lightMap=lm;mt.envMapIntensity=0;mt.metalness=0;
+          let nm=(mt.name||'').split('.')[0];if(k==3&&nm==='T_ahsap'){g.computeBoundingBox();const cx=(g.boundingBox.min.x+g.boundingBox.max.x)/2;if(cx<B3.min.x+0.3*(B3.max.x-B3.min.x)||cx>B3.max.x-0.3*(B3.max.x-B3.min.x)){nm='T_tas';m.material=mt.clone();mt=m.material}}const sw=SW[nm];if(sw&&mt.map){const t=sw.clone();t.needsUpdate=true;t.repeat.copy(mt.map.repeat).multiplyScalar(0.6);t.offset.copy(mt.map.offset);mt.map=t}
           mt.userData.c0=mt.color.clone();{const c=mt.color;if(c.b>0.4&&c.b>c.r*2.2&&!mt.map)mt.userData.c0=new THREE.Color(0.32,0.32,0.31)}mt.needsUpdate=true;MATS[k].push(mt)});
         F.add(gl.scene);isik()})}
     let lastF=0;setInterval(()=>{if(FLOOR!==lastF||geceMi()!==gece){lastF=FLOOR;isik()}},700);
