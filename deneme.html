@@ -995,7 +995,7 @@ function init3D(){
     if(!THREE.GLTFLoader||HAFIF)return;
     const BAKED={1:'bake/k1',2:'bake/k2',3:'bake/k3'};const LT=[];root.traverse(o=>{if(o.isLight&&!o.isPointLight)LT.push([o,o.intensity])});
     const TL=new THREE.TextureLoader(),tx=u=>{const t=TL.load(u,()=>{needs=true});t.encoding=THREE.sRGBEncoding;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=8;return t};
-    const SW={T_ahsap:tx('tex/ahsap.jpg'),T_tas:tx('tex/tas.jpg'),T_cim:tx('tex/cim.jpg')};
+    const SW={T_ahsap:tx('tex/ahsap.jpg'),T_tas:tx('tex/tas.jpg'),T_cim:tx('tex/cim.jpg')},DT={F_kumas:[tx('tex/kumas.jpg'),2.2],F_ceviz:[tx('tex/ceviz.jpg'),1.2]};
     const MATS={},NT=new THREE.Color(0.72,0.78,1),WT=new THREE.Color(1,1,1);let gece=null;
     function gunes(d){const lat=40.8758*Math.PI/180,N=Math.floor((d-new Date(d.getFullYear(),0,0))/864e5),g=2*Math.PI/365*(N-1);
       const eq=229.18*(.000075+.001868*Math.cos(g)-.032077*Math.sin(g)-.014615*Math.cos(2*g)-.040849*Math.sin(2*g));
@@ -1011,7 +1011,7 @@ function init3D(){
         F.children.slice().forEach(o=>{o.traverse(m=>{if(m.isMesh&&!(m.material&&m.material.transparent))m.visible=false})});const B3=new THREE.Box3().setFromObject(gl.scene);
         gl.scene.traverse(m=>{if(!m.isMesh)return;m.castShadow=false;m.receiveShadow=true;const g=m.geometry;if(!g.attributes.uv2)return;
           let mt=m.material;mt.lightMap=lm;mt.envMapIntensity=0;mt.metalness=0;
-          let nm=(mt.name||'').split('.')[0];if(k==3&&nm==='T_ahsap'){g.computeBoundingBox();const cx=(g.boundingBox.min.x+g.boundingBox.max.x)/2;if(cx<B3.min.x+0.3*(B3.max.x-B3.min.x)||cx>B3.max.x-0.3*(B3.max.x-B3.min.x)){nm='T_tas';m.material=mt.clone();mt=m.material}}const sw=SW[nm];if(sw&&mt.map){const t=sw.clone();t.needsUpdate=true;t.repeat.copy(mt.map.repeat).multiplyScalar(0.6);t.offset.copy(mt.map.offset);mt.map=t}
+          let nm=(mt.name||'').split('.')[0];if(k==3&&nm==='T_ahsap'){g.computeBoundingBox();const cx=(g.boundingBox.min.x+g.boundingBox.max.x)/2;if(cx<B3.min.x+0.3*(B3.max.x-B3.min.x)||cx>B3.max.x-0.3*(B3.max.x-B3.min.x)){nm='T_tas';m.material=mt.clone();mt=m.material}}const sw=SW[nm];if(DT[nm]&&!mt.map){const t=DT[nm][0].clone();t.needsUpdate=true;t.repeat.set(DT[nm][1],DT[nm][1]);mt.map=t;mt.roughness=nm==='F_kumas'?0.95:0.5}if(sw&&mt.map){const t=sw.clone();t.needsUpdate=true;t.repeat.copy(mt.map.repeat).multiplyScalar(0.6);t.offset.copy(mt.map.offset);mt.map=t}
           mt.userData.c0=mt.color.clone();{const c=mt.color;if(c.b>0.4&&c.b>c.r*2.2&&!mt.map)mt.userData.c0=new THREE.Color(0.32,0.32,0.31)}mt.needsUpdate=true;MATS[k].push(mt)});
         F.add(gl.scene);isik()})}
     let lastF=0;setInterval(()=>{if(FLOOR!==lastF||geceMi()!==gece){lastF=FLOOR;isik()}},700);
