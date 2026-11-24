@@ -1004,9 +1004,9 @@ function init3D(){
       const ha=Math.acos(Math.cos(90.833*Math.PI/180)/(Math.cos(lat)*Math.cos(de))-Math.tan(lat)*Math.tan(de))*180/Math.PI;return[720-4*(29.2336+ha)-eq+180,720-4*(29.2336-ha)-eq+180]}
     const geceMi=()=>{const gm=window.__gunMod&&window.__gunMod();if(gm)return gm==='gece';const q=(location.search.match(/[?&]gece=(\d)/)||[])[1];if(q)return q==='1';const n=new Date(),[a,b]=gunes(n),t=n.getHours()*60+n.getMinutes();return t<a||t>=b};
     function isik(){const baked=!!(BAKED[FLOOR]&&MATS[FLOOR]);const g=geceMi();gece=g;
-      LT.forEach(([l,i])=>{l.intensity=baked?(g?i*0.14:i*0.25):i});
-      for(const k in MATS)MATS[k].forEach(m=>{m.lightMapIntensity=g?0.07:1.3;m.color.copy(m.userData.c0).multiply(g?NT:WT)});
-      renderer.toneMappingExposure=baked&&!g?0.95:1.15;renderer.shadowMap.needsUpdate=true;needs=true}
+      LT.forEach(([l,i])=>{l.intensity=baked?(g?i*0.3:i*0.25):i});
+      for(const k in MATS)MATS[k].forEach(m=>{m.lightMapIntensity=g?0.2:1.3;m.color.copy(m.userData.c0).multiply(g?NT:WT)});
+      renderer.toneMappingExposure=baked&&!g?0.95:1.15;window.__plK=baked&&g?1.9:1;if(typeof update3D==='function')update3D();renderer.shadowMap.needsUpdate=true;needs=true}
     for(const k in BAKED){const lm=TL.load(BAKED[k]+'_isik.jpg',()=>{needs=true});lm.encoding=THREE.sRGBEncoding;lm.flipY=false;
       new THREE.GLTFLoader().load(BAKED[k]+'.glb',gl=>{const F=FG[k];MATS[k]=[];
         F.children.slice().forEach(o=>{o.traverse(m=>{if(m.isMesh&&!(m.material&&m.material.transparent))m.visible=false})});const B3=new THREE.Box3().setFromObject(gl.scene);
@@ -1113,7 +1113,7 @@ function rebuildAcc(){
   if(T.group){scene.remove(T.group);T.group.traverse(o=>{if(o.geometry)o.geometry.dispose()})}
   T.shadowDirty&&T.shadowDirty();const g=new THREE.Group();T.group=g;scene.add(g);T.PL=[];T.HALO=[];T.EMIS=[];T.HIT=[];T.COVERS=[];T.CLIM=[];T.PLUGLED=[];T.CAMCONE=[];
   const A=(geo,m,x,y,z)=>add(geo,m,x,y,z,0,g);
-  const pl=(id,x,y,z,max,dist)=>{if(HAFIF)return;const l=new THREE.PointLight('#ffb35a',0,(dist||4.2)*1.1,2);l.position.set(x,y,z);l.userData={id,max:max*1.35,target:0};g.add(l);T.PL.push(l)};
+  const pl=(id,x,y,z,max,dist)=>{if(HAFIF&&T.PL.length>=10)return;const l=new THREE.PointLight('#ffb35a',0,(dist||4.2)*1.1,2);l.position.set(x,y,z);l.userData={id,max:max*1.35,target:0};g.add(l);T.PL.push(l)};
   const halo=(id,x,y,z,s)=>{const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:haloTex,blending:THREE.AdditiveBlending,depthWrite:false,transparent:true,opacity:0}));
     if(HAFIF)s*=1.7;sp.position.set(x,y,z);sp.scale.set(s,s,1);sp.userData={id,target:0};g.add(sp);T.HALO.push(sp)};
   const emis=(o,id)=>{o.castShadow=false;o.userData.id=id;T.EMIS.push(o);return o};
@@ -1178,7 +1178,7 @@ function rebuildAcc(){
 }
 function update3D(){
   if(!T)return;
-  T.PL.forEach(l=>{const a=ACC[l.userData.id];l.userData.target=a&&a.on?(0.35+0.65*((a.dim?a.bri:100)??100)/100)*l.userData.max:0});
+  T.PL.forEach(l=>{const a=ACC[l.userData.id];l.userData.target=a&&a.on?(0.35+0.65*((a.dim?a.bri:100)??100)/100)*l.userData.max*(window.__plK||1):0});
   T.HALO.forEach(h=>{const a=ACC[h.userData.id];h.userData.target=a&&a.on?(0.35+0.65*((a.dim?a.bri:100)??100)/100)*(h.userData.k??1):0});
   T.EMIS.forEach(o=>{const id=o.userData.id||o.userData.shade;const a=ACC[id];const on=a&&a.on;
     if(o.userData.shade)o.material.emissive.set(on?'#ffb35a':'#000000');else o.material.color.set(on?'#ffd28a':'#b4bbe6')});
