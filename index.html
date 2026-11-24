@@ -993,7 +993,7 @@ function init3D(){
   
   /* ---------- Gerçekçi 3D (deneme): Blender'da pişmiş ışık/gölge + gerçek dokular. Gündüz/gece saate göre ---------- */
   (function(){
-    if(!THREE.GLTFLoader||HAFIF)return;
+    if(!THREE.GLTFLoader)return;
     const BAKED={1:'bake/k1',2:'bake/k2',3:'bake/k3'};const LT=[];root.traverse(o=>{if(o.isLight&&!o.isPointLight)LT.push([o,o.intensity])});
     const TL=new THREE.TextureLoader(),tx=u=>{const t=TL.load(u,()=>{needs=true});t.encoding=THREE.sRGBEncoding;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=8;return t};
     const SW={T_ahsap:tx('tex/ahsap.jpg'),T_tas:tx('tex/tas.jpg'),T_cim:tx('tex/cim.jpg')},DT={F_kumas:[tx('tex/kumas.jpg'),2.2],F_ceviz:[tx('tex/ceviz.jpg'),1.2]};
