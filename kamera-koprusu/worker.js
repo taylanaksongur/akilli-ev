@@ -41,8 +41,36 @@ async function live(env, dev) {
 async function status(env, devs) {
   const t = await token(env);
   const r = await call(env, 'listDeviceDetailsByPage', { token: t, page: 1, pageSize: 50 });
-  const m = {}; (r.data?.deviceList || []).forEach(d => m[d.deviceId] = (d.channelList?.[0]?.channelStatus || d.deviceStatus) === 'online');
-  return m;
+  const m = {}, ab = {}; (r.data?.deviceList || []).forEach(d => {
+    m[d.deviceId] = (d.channelList?.[0]?.channelStatus || d.deviceStatus) === 'online';
+    const yet = [d.ability, d.channelList?.[0]?.channelAbility].filter(x => typeof x === 'string').join(',');
+    ab[d.deviceId] = yet ? /(^|,)(PT|PTZ)(,|$)/.test(yet) : null; // null: bilinmiyor
+  });
+  return { m, ab };
+}
+/* Pan/tilt/yakınlaştırma: op 0 yukarı,1 aşağı,2 sol,3 sağ,4 sol-üst,5 sol-alt,6 sağ-üst,7 sağ-alt,8 yakınlaş,9 uzaklaş,10 dur */
+async function ptz(env, dev, op, ms) {
+  const t = await token(env);
+  const r = await call(env, 'controlMovePTZ', { token: t, deviceId: dev, channelId: '0', operation: String(op), duration: ms });
+  if (r.code !== '0') throw new Error(r.msg || 'Kamera bu hareketi desteklemiyor');
+  return { ok: true };
+}
+/* Kayıt geçmişi: önce SD kart (queryLocalRecords), kayıt yoksa bulut (queryCloudRecords). Saatler cihaz saatiyle, olduğu gibi iletilir. */
+async function records(env, dev, day) {
+  const t = await token(env), base = { token: t, deviceId: dev, channelId: '0', beginTime: day + ' 00:00:00', endTime: day + ' 23:59:59', queryRange: '1-100' };
+  const list = r => (r.data?.records || []).map(x => ({ b: x.beginTime, e: x.endTime, t: x.type || '' }));
+  let r = await call(env, 'queryLocalRecords', { ...base, type: 'All' }), l = r.code === '0' ? list(r) : [];
+  if (l.length) return { kaynak: 'localRecord', records: l };
+  r = await call(env, 'queryCloudRecords', base); l = r.code === '0' ? list(r) : [];
+  return { kaynak: 'cloudRecord', records: l, ...(r.code !== '0' && !l.length ? { not: r.msg || '' } : {}) };
+}
+async function play(env, dev, b, e, kaynak) {
+  const t = await token(env);
+  const r = await call(env, 'createDeviceRecordHls', { token: t, deviceId: dev, channelId: '0', streamId: 1, beginTime: b, endTime: e, recordType: kaynak });
+  if (r.code !== '0') throw new Error(r.msg || 'Kayıt açılamadı');
+  const url = r.data?.url || r.data?.hls || r.data?.streams?.[0]?.hls || '';
+  if (!url) throw new Error('Kayıt adresi gelmedi');
+  return { url };
 }
 /* Aksi hesabı: her kamera yalnızca kendi alanı için izni olana açılır (ev -> ev kameraları, tekne -> tekne kameraları).
    Oturum yanıtı 60 sn önbelleklenir: alan izni değişikliği en geç 1 dk içinde geçerli olur. */
@@ -80,13 +108,30 @@ export default {
     try {
       if (u.pathname === '/cams') {
         const st = await status(env);
-        return out({ cams: Object.entries(g).map(([id, c]) => ({ id, name: c.name, online: !!st[c.dev] })) });
+        return out({ cams: Object.entries(g).map(([id, c]) => ({ id, name: c.name, online: !!st.m[c.dev], ptz: st.ab[c.dev] ?? null })) });
+      }
+      const ck = () => { const c = g[u.searchParams.get('cam')]; if (!c) throw Object.assign(new Error('Kamera yok'), { kod: 404 }); return c; };
+      const zam = x => /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(x || '');
+      if (u.pathname === '/ptz') {
+        const op = +u.searchParams.get('op'), ms = Math.min(Math.max(+u.searchParams.get('ms') || 400, 100), 2000);
+        if (!Number.isInteger(op) || op < 0 || op > 10) return out({ error: 'Geçersiz hareket' }, 400);
+        return out(await ptz(env, ck().dev, op, ms));
+      }
+      if (u.pathname === '/records') {
+        const day = u.searchParams.get('day') || '';
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return out({ error: 'Geçersiz gün' }, 400);
+        return out(await records(env, ck().dev, day));
+      }
+      if (u.pathname === '/play') {
+        const b = u.searchParams.get('b'), e = u.searchParams.get('e'), k = u.searchParams.get('k') === 'cloudRecord' ? 'cloudRecord' : 'localRecord';
+        if (!zam(b) || !zam(e) || b.slice(0, 10) !== e.slice(0, 10)) return out({ error: 'Geçersiz saat aralığı (aynı gün olmalı)' }, 400);
+        return out(await play(env, ck().dev, b, e, k));
       }
       if (u.pathname === '/live') {
         const c = g[u.searchParams.get('cam')]; if (!c) return out({ error: 'Kamera yok' }, 404);
         return out(await live(env, c.dev));
       }
       return out({ error: 'Bilinmeyen istek' }, 404);
-    } catch (e) { return out({ error: String(e.message || e) }, 502); }
+    } catch (e) { return out({ error: String(e.message || e) }, e.kod || 502); }
   }
 };
