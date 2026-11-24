@@ -87,6 +87,17 @@ nav.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--
 .bal-list button.on{background:#ffbf5e;color:#3a2200;border-color:#ffe2a8}
 .stage-ctrl .bal-t.act{background:var(--accent);border-color:var(--accent);color:#fff}
 .stage-ctrl .bal-t.act svg{color:#fff}
+
+/* AI görünümü (gerçekçi plan) */
+.ai-wrap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:2;background:var(--bg,#0f1430)}
+.ai-wrap[hidden]{display:none}
+.ai-wrap{overflow:hidden;touch-action:none}
+.ai-wrap canvas{max-width:100%;max-height:100%;display:block;border-radius:14px;touch-action:none;cursor:pointer;transform-origin:0 0;will-change:transform}
+.vmode{display:inline-flex;background:rgba(20,26,62,.92);border-radius:12px;padding:3px;gap:2px}
+.stage-ctrl .vmode button{min-height:38px;padding:0 14px;border-radius:9px;background:none;border:0;color:#9aa3d6;font-weight:700}
+.stage-ctrl .vmode button[aria-pressed=true]{background:#4a63ff;color:#fff}
+html.ai-mod .bal-ov,html.ai-mod .bal-t{display:none!important}
+.ai-day{font-size:12px;color:#9aa3d6;align-self:center;padding:0 4px}
 .stage-ctrl{position:absolute;left:12px;bottom:12px;display:flex;gap:8px;z-index:3;flex-wrap:wrap}
 .stage-ctrl button{display:inline-flex;align-items:center;gap:7px;padding:9px 13px;border-radius:12px;font-size:12px;font-weight:600;
   background:rgba(24,31,69,.82);border:1px solid var(--line);color:var(--fg);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
@@ -364,7 +375,8 @@ html:not(.ph) .room-views{margin:10px auto 0}html:not(.ph) .floors button[aria-p
   <section class="view" id="view-kontrol">
     <div class="stage-wrap">
       <div class="room-views" id="roomViews" role="group" aria-label="Odalar"></div>
-      <div class="stage" id="stage"><div class="floor-empty" id="floorEmpty" hidden><strong id="feTitle">Kat 2</strong><p>Bu katın planı henüz eklenmedi. Kat planı görselini gönderdiğinde bu katı da 3B olarak kuracağım.</p></div><div class="thermo" id="thermo"></div><div class="stage-ctrl" id="stageCtrl">
+      <div class="stage" id="stage"><div class="floor-empty" id="floorEmpty" hidden><strong id="feTitle">Kat 2</strong><p>Bu katın planı henüz eklenmedi. Kat planı görselini gönderdiğinde bu katı da 3B olarak kuracağım.</p></div><div class="thermo" id="thermo"></div><div class="ai-wrap" id="aiWrap" hidden><canvas id="aiCv" width="1280" height="598" aria-label="Gerçekçi kat planı"></canvas></div><div class="stage-ctrl" id="stageCtrl">
+        <div class="vmode" role="group" aria-label="Görünüm"><button type="button" data-vm="3d" aria-pressed="true">3D</button><button type="button" data-vm="ai" aria-pressed="false">AI</button></div><span class="ai-day" id="aiDay" hidden></span>
         <button class="on" id="allOn" type="button" title="Bu kattaki bütün ışıkları aç"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z"/></svg>Tüm ışıkları aç</button>
         <button id="allOff" type="button"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3zM4 4l16 16"/></svg>Tüm ışıkları kapat</button>
       </div></div>
@@ -475,7 +487,7 @@ html:not(.ph) .room-views{margin:10px auto 0}html:not(.ph) .floors button[aria-p
 <script>window.aksiEsitle&&aksiEsitle({alan:"ev",anahtarlar:{"aksongur-aksesuarlar":{her:["on","bri"]},"aksongur-ihost":{},"aksongur-modlar":{},"aksongur-balon-yer":{},"aksongur-kamera-v3":{gizli:["pass"]}}})</script>
 <script>/* Işık durumunu en erken başlat: sayfa kütüphaneleri yüklenirken istek zaten yolda olsun */
 try{var __t=localStorage.getItem('aksi-oturum');if(__t){window.__ihOn=fetch('https://aksi-hesap.aksongur.workers.dev/kopru/ihost/cihazlar',{headers:{Authorization:'Bearer '+__t},cache:'no-store'}).then(function(r){return r.ok?r.json():null}).catch(function(){return null})}}catch(e){}</script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script><script src="lib/GLTFLoader.js"></script>
 <script>
 (function(){
 const $=s=>document.querySelector(s);
@@ -536,11 +548,11 @@ const FLS={
     [[1653,42,1665,229,2,'#2a2f45',6],[1607,300,1619,696,5,'#2a2f45',6],[1653,777,1665,963,2,'#2a2f45',6]],
     [-10,20,1964,1180],[972,612,7.0,4.6]),
  3:mkFloor(T3,{
-   sol3:['Sol oda','#f2a93b','wood',[210,520],[[20,61],[403,61],[403,992],[20,992]]],
+   sol3:['Sol teras','#f2a93b','stone',[210,520],[[20,61],[403,61],[403,992],[20,992]]],
    calisma:['Çalışma odası','#4a63ff','wood',[820,440],[[433,61],[1029,61],[1029,125],[1105,125],[1105,730],[814,730],[814,679],[583,679],[583,709],[452,709],[452,679],[433,679]]],
    banyo3:['Banyo','#4fc3ff','stone',[1010,880],[[814,758],[973,758],[973,730],[1105,730],[1105,992],[814,992]]],
    merdiven3:['Merdiven','#ff6b81','void',[608,860],[[433,708],[783,708],[783,992],[433,992]]],
-   sag3:['Sağ oda','#36d39a','wood',[1385,520],[[1134,61],[1635,61],[1635,992],[1134,992]]]
+   sag3:['Sağ teras','#36d39a','stone',[1385,520],[[1134,61],[1635,61],[1635,992],[1134,992]]]
   },[[-10,30,1677,31],[-10,61,30,961],[-10,992,1677,30],[1635,61,32,931],
      [403,61,30,931],[1105,61,29,931],[1029,61,30,64],[1059,100,46,25],
      [433,679,19,30],[583,678,231,30],[783,708,31,284],[814,730,159,28]],
@@ -605,7 +617,7 @@ function patchAcc(id,patch){Object.assign(ACC[id],patch);afterChange(false);
 function delAcc(id){delete ACC[id];afterChange(true);if(store==='db')return write(id,()=>col.doc(id).delete());lsSave()}
 let lastSig='';
 function sig(){return FLOOR+JSON.stringify(Object.values(ACC).map(a=>[a.id,a.kind,a.pts,a.h,a.room,!!a.loop]).sort())}
-function afterChange(){if(Object.keys(ACC).length&&store!=='loading'){const m=$('#stageMsg');if(m&&/Henüz/.test(m.textContent))m.textContent=''}const s=sig();if(s!==lastSig){lastSig=s;rebuildAcc()}update3D();renderSettings();window.__lsRefresh&&window.__lsRefresh()}
+function afterChange(){if(Object.keys(ACC).length&&store!=='loading'){const m=$('#stageMsg');if(m&&/Henüz/.test(m.textContent))m.textContent=''}const s=sig();if(s!==lastSig){lastSig=s;rebuildAcc()}update3D();renderSettings();window.__lsRefresh&&window.__lsRefresh();window.__aiDraw&&window.__aiDraw()}
 
 function houseBox(all){let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const k in ROOMS){if(k==='bahce'&&!all)continue;polyPts(ROOMS[k].poly).forEach(p=>{x0=Math.min(x0,p[0]);y0=Math.min(y0,p[1]);x1=Math.max(x1,p[0]);y1=Math.max(y1,p[1])})}
   x0-=14;y0-=14;x1+=14;y1+=14;return{x0,y0,x1,y1,hw:(x1-x0)/2*S,hd:(y1-y0)/2*S,cx:X((x0+x1)/2),cz:Z((y0+y1)/2)}}
@@ -977,6 +989,33 @@ function init3D(){
   const moon=new THREE.DirectionalLight('#8fa2ff',0.28);moon.position.set(-2,13,9);moon.target.position.set(3,0,0);scene.add(moon.target);moon.castShadow=true;
   moon.shadow.mapSize.set(2048,2048);Object.assign(moon.shadow.camera,{left:-12,right:12,top:12,bottom:-12,near:1,far:45});moon.shadow.bias=-0.0008;scene.add(moon);
 
+  
+  /* ---------- Gerçekçi 3D (deneme): Blender'da pişmiş ışık/gölge + gerçek dokular. Gündüz/gece saate göre ---------- */
+  (function(){
+    if(!THREE.GLTFLoader||HAFIF)return;
+    const BAKED={1:'bake/k1',2:'bake/k2',3:'bake/k3'};const LT=[];root.traverse(o=>{if(o.isLight&&!o.isPointLight)LT.push([o,o.intensity])});
+    const TL=new THREE.TextureLoader(),tx=u=>{const t=TL.load(u,()=>{needs=true});t.encoding=THREE.sRGBEncoding;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=8;return t};
+    const SW={T_ahsap:tx('tex/ahsap.jpg'),T_tas:tx('tex/tas.jpg'),T_cim:tx('tex/cim.jpg')},DT={F_kumas:[tx('tex/kumas.jpg'),2.2],F_ceviz:[tx('tex/ceviz.jpg'),1.2]};
+    const MATS={},NT=new THREE.Color(0.72,0.78,1),WT=new THREE.Color(1,1,1);let gece=null;
+    function gunes(d){const lat=40.8758*Math.PI/180,N=Math.floor((d-new Date(d.getFullYear(),0,0))/864e5),g=2*Math.PI/365*(N-1);
+      const eq=229.18*(.000075+.001868*Math.cos(g)-.032077*Math.sin(g)-.014615*Math.cos(2*g)-.040849*Math.sin(2*g));
+      const de=.006918-.399912*Math.cos(g)+.070257*Math.sin(g)-.006758*Math.cos(2*g)+.000907*Math.sin(2*g)-.002697*Math.cos(3*g)+.00148*Math.sin(3*g);
+      const ha=Math.acos(Math.cos(90.833*Math.PI/180)/(Math.cos(lat)*Math.cos(de))-Math.tan(lat)*Math.tan(de))*180/Math.PI;return[720-4*(29.2336+ha)-eq+180,720-4*(29.2336-ha)-eq+180]}
+    const geceMi=()=>{const q=(location.search.match(/[?&]gece=(\d)/)||[])[1];if(q)return q==='1';const n=new Date(),[a,b]=gunes(n),t=n.getHours()*60+n.getMinutes();return t<a||t>=b};
+    function isik(){const baked=!!(BAKED[FLOOR]&&MATS[FLOOR]);const g=geceMi();gece=g;
+      LT.forEach(([l,i])=>{l.intensity=baked?(g?i*0.35:i*0.25):i});
+      for(const k in MATS)MATS[k].forEach(m=>{m.lightMapIntensity=g?0.07:1.3;m.color.copy(m.userData.c0).multiply(g?NT:WT)});
+      renderer.toneMappingExposure=baked&&!g?0.95:1.15;renderer.shadowMap.needsUpdate=true;needs=true}
+    for(const k in BAKED){const lm=TL.load(BAKED[k]+'_isik.jpg',()=>{needs=true});lm.encoding=THREE.sRGBEncoding;lm.flipY=false;
+      new THREE.GLTFLoader().load(BAKED[k]+'.glb',gl=>{const F=FG[k];MATS[k]=[];
+        F.children.slice().forEach(o=>{o.traverse(m=>{if(m.isMesh&&!(m.material&&m.material.transparent))m.visible=false})});const B3=new THREE.Box3().setFromObject(gl.scene);
+        gl.scene.traverse(m=>{if(!m.isMesh)return;m.castShadow=false;m.receiveShadow=true;const g=m.geometry;if(!g.attributes.uv2)return;
+          let mt=m.material;mt.lightMap=lm;mt.envMapIntensity=0;mt.metalness=0;
+          let nm=(mt.name||'').split('.')[0];if(k==3&&nm==='T_ahsap'){g.computeBoundingBox();const cx=(g.boundingBox.min.x+g.boundingBox.max.x)/2;if(cx<B3.min.x+0.3*(B3.max.x-B3.min.x)||cx>B3.max.x-0.3*(B3.max.x-B3.min.x)){nm='T_tas';m.material=mt.clone();mt=m.material}}const sw=SW[nm];if(DT[nm]&&!mt.map){const t=DT[nm][0].clone();t.needsUpdate=true;t.repeat.set(DT[nm][1],DT[nm][1]);mt.map=t;mt.roughness=nm==='F_kumas'?0.95:0.5}if(sw&&mt.map){const t=sw.clone();t.needsUpdate=true;t.repeat.copy(mt.map.repeat).multiplyScalar(0.6);t.offset.copy(mt.map.offset);mt.map=t}
+          mt.userData.c0=mt.color.clone();{const c=mt.color;if(c.b>0.4&&c.b>c.r*2.2&&!mt.map)mt.userData.c0=new THREE.Color(0.32,0.32,0.31)}mt.needsUpdate=true;MATS[k].push(mt)});
+        F.add(gl.scene);isik()})}
+    let lastF=0;setInterval(()=>{if(FLOOR!==lastF||geceMi()!==gece){lastF=FLOOR;isik()}},700);
+  })();
   T={scene,camera,renderer,add,box,mat,M,haloTex,lineTex,group:null,PL:[],HALO:[],EMIS:[],HIT:[],COVERS:[],CLIM:[],PLUGLED:[],CAMCONE:[]};
 
   /* kamera */
@@ -1369,7 +1408,7 @@ function setFloor(n){if(!FLS[n])n=1;FLOOR=n;try{localStorage.setItem('aksongur-k
   edit=null;selId=null;confirmDel=false;formErr='';openRoom=null;closePop();closeCam();
   if(T&&T.setFloor)T.setFloor(n);
   renderRoomViews();
-  lastSig=sig();rebuildAcc();update3D();renderSettings()}
+  lastSig=sig();rebuildAcc();update3D();renderSettings();window.__aiDraw&&window.__aiDraw(true)}
 document.querySelectorAll('[data-floor]').forEach(b=>b.addEventListener('click',()=>{if(FLOOR===+b.dataset.floor)return;setFloor(+b.dataset.floor)}));
 
 /* ---------- Hava durumu: Open-Meteo (anahtarsız), konum Pendik / İstanbul ---------- */
@@ -1635,7 +1674,88 @@ function watchPin(){if(!DB)return;DB.doc('settings/lock').onSnapshot(sn=>{const 
 
 const _rs=renderSettings;renderSettings=function(){_rs();renderThermo();renderRooms();refreshCam()};
 
-init3D();renderSettings();setFloor(FLOOR);initStore().then(watchPin);initWeather();
+init3D();renderSettings();
+/* ---------- AI görünümü: gerçekçi plan görselleri (gündüz / gece kapalı / gece açık), lambalar gerçek duruma göre ---------- */
+(function(){
+  const AI={1:{bb:[25,17,1028,578],h:598},2:{bb:[37,20,1250,687],h:692},3:{bb:[23,13,1258,692],h:700}};
+  const R={spot:170,pendant:190,sconce:110,lamp:120,strip:75};
+  const wrap=$('#aiWrap'),cv=$('#aiCv'),x=cv.getContext('2d'),o=document.createElement('canvas'),ox=o.getContext('2d'),m=document.createElement('canvas'),mx=m.getContext('2d');
+  let mod='3d';try{mod=localStorage.getItem('aksongur-gorunum')==='ai'?'ai':'3d'}catch(e){}
+  const IMG={},K={};let anim=false,Z={s:1,x:0,y:0};
+  function img(n,t){const k=n+t;if(!IMG[k]){const i=new Image();i.onload=()=>draw();i.src='ai/k'+n+'_'+t+'.jpg';IMG[k]=i}return IMG[k]}
+  function gunes(d){const lat=HOME.lat*Math.PI/180,N=Math.floor((d-new Date(d.getFullYear(),0,0))/864e5),g=2*Math.PI/365*(N-1);
+    const eq=229.18*(.000075+.001868*Math.cos(g)-.032077*Math.sin(g)-.014615*Math.cos(2*g)-.040849*Math.sin(2*g));
+    const de=.006918-.399912*Math.cos(g)+.070257*Math.sin(g)-.006758*Math.cos(2*g)+.000907*Math.sin(2*g)-.002697*Math.cos(3*g)+.00148*Math.sin(3*g);
+    const ha=Math.acos(Math.cos(90.833*Math.PI/180)/(Math.cos(lat)*Math.cos(de))-Math.tan(lat)*Math.tan(de))*180/Math.PI;
+    return[720-4*(HOME.lon+ha)-eq+180,720-4*(HOME.lon-ha)-eq+180]}
+  const hm=v=>String(Math.floor(v/60)).padStart(2,'0')+':'+String(Math.round(v%60)).padStart(2,'0');
+  function gece(){const q=(location.search.match(/[?&]gece=(\d)/)||[])[1];if(q)return q==='1';const n=new Date(),[d,b]=gunes(n),t=n.getHours()*60+n.getMinutes();
+    const el=$('#aiDay');if(el)el.textContent=(t>=d&&t<b?'Gündüz · gün batımı ':'Gece · gün doğumu ')+hm(t>=d&&t<b?b:d);return t<d||t>=b}
+  function plan(){let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;WALLS.forEach(w=>{x0=Math.min(x0,w[0]);y0=Math.min(y0,w[1]);x1=Math.max(x1,w[0]+w[2]);y1=Math.max(y1,w[1]+w[3])});return[x0,y0,x1,y1]}
+  let P=null,B=null;const mp=(px,py)=>[B[0]+(px-P[0])/(P[2]-P[0])*(B[2]-B[0]),B[1]+(py-P[1])/(P[3]-P[1])*(B[3]-B[1])];
+  const lights=()=>accList().filter(a=>KINDS[a.kind]&&KINDS[a.kind].light&&a.pts&&a.pts.length);
+  const bri=a=>((a.dim?a.bri:100)??100)/100;
+  function roomPath(c,a){const k=a.room&&ROOMS[a.room]?a.room:roomAt(a.pts[0][0],a.pts[0][1]);if(!k||k==='bahce')return false;
+    c.beginPath();polyPts(ROOMS[k].poly).forEach((p,i)=>{const q=mp(p[0],p[1]);i?c.lineTo(q[0],q[1]):c.moveTo(q[0],q[1])});c.closePath();return true}
+  function maske(a,r){const pts=a.pts.map(p=>mp(p[0],p[1]));
+    if(a.kind==='strip'){for(let i=0;i<pts.length-1;i++){const[p,q]=[pts[i],pts[i+1]],L=Math.hypot(q[0]-p[0],q[1]-p[1]),n=Math.max(2,Math.ceil(L/25));
+      for(let j=0;j<=n;j++){const X=p[0]+(q[0]-p[0])*j/n,Y=p[1]+(q[1]-p[1])*j/n,g=mx.createRadialGradient(X,Y,0,X,Y,r);g.addColorStop(0,'rgba(0,0,0,.6)');g.addColorStop(1,'rgba(0,0,0,0)');mx.fillStyle=g;mx.fillRect(X-r,Y-r,2*r,2*r)}}}
+    else pts.forEach(([X,Y])=>{const g=mx.createRadialGradient(X,Y,0,X,Y,r);g.addColorStop(0,'rgba(0,0,0,1)');g.addColorStop(.55,'rgba(0,0,0,.85)');g.addColorStop(1,'rgba(0,0,0,0)');mx.fillStyle=g;mx.fillRect(X-r,Y-r,2*r,2*r)});return pts}
+  function parilti(a,pts,k,night){x.save();x.globalCompositeOperation='lighter';x.globalAlpha=k;
+    if(a.kind==='strip'){x.lineCap='round';x.lineJoin='round';x.beginPath();pts.forEach((p,i)=>i?x.lineTo(p[0],p[1]):x.moveTo(p[0],p[1]));
+      x.strokeStyle='rgba(255,190,110,.5)';x.lineWidth=night?11:6;x.shadowColor='#ffb04d';x.shadowBlur=night?22:8;x.stroke();x.shadowBlur=0;x.strokeStyle='rgba(255,248,225,.95)';x.lineWidth=2.2;x.stroke()}
+    else pts.forEach(([X,Y])=>{const r=night?22:12,g=x.createRadialGradient(X,Y,0,X,Y,r);g.addColorStop(0,'rgba(255,245,220,1)');g.addColorStop(.25,'rgba(255,200,120,.8)');g.addColorStop(1,'rgba(255,150,60,0)');x.fillStyle=g;x.beginPath();x.arc(X,Y,r,0,7);x.fill()});x.restore()}
+  function draw(reset){if(mod!=='ai')return;const n=FLOOR,C=AI[n];if(!C)return;
+    if(cv.height!==C.h)cv.height=C.h;if(o.height!==C.h){o.width=m.width=1280;o.height=m.height=C.h}B=C.bb;P=plan();
+    const night=gece(),base=img(n,night?'kapali':'gunduz'),lit=img(n,'acik');img(n,night?'gunduz':'kapali');
+    if(!base.complete||!lit.complete)return;
+    let dev=false;const L=lights();L.forEach(a=>{const h=a.on?bri(a):0;if(reset||K[a.id]==null)K[a.id]=reset?h:0;if(Math.abs(K[a.id]-h)>.01){K[a.id]+=(h-K[a.id])*.2;dev=true}else K[a.id]=h});
+    x.globalCompositeOperation='source-over';x.globalAlpha=1;x.drawImage(base,0,0);
+    for(const a of L){const k=K[a.id];
+      if(k<=.005)continue;
+      const r=(R[a.kind]||150)*(.6+.4*k);mx.globalCompositeOperation='source-over';mx.clearRect(0,0,1280,C.h);const pts=maske(a,r);
+      x.save();if(roomPath(x,a))x.clip();
+      if(night){ox.globalCompositeOperation='source-over';ox.clearRect(0,0,1280,C.h);ox.drawImage(lit,0,0);ox.globalCompositeOperation='destination-in';ox.drawImage(m,0,0);
+        x.globalAlpha=Math.min(1,k*1.15);x.drawImage(o,0,0)}
+      else{x.globalCompositeOperation='soft-light';x.globalAlpha=.4*k;const p=pts[0],g=x.createRadialGradient(p[0],p[1],0,p[0],p[1],r);g.addColorStop(0,'#ffcf80');g.addColorStop(1,'rgba(255,207,128,0)');x.fillStyle=g;x.fillRect(0,0,1280,C.h)}
+      x.restore();parilti(a,pts,k,night)}
+    /* dokunma düğmeleri: ekranda hep aynı boyda (yakınlaştırınca planla birlikte kayar) */
+    const sc=1280/Math.max(1,cv.offsetWidth)/(Z.s||1),rr=12*sc;
+    for(const a of L){const on=K[a.id]>.5,pts=a.pts.map(p=>mp(p[0],p[1]));let q=pts[0];if(a.kind==='strip'&&pts.length>1){const i=Math.floor((pts.length-1)/2);q=[(pts[i][0]+pts[i+1][0])/2,(pts[i][1]+pts[i+1][1])/2]}
+      (a.kind==='strip'?[q]:pts).forEach(([X,Y])=>{x.save();x.beginPath();x.arc(X,Y,rr,0,7);x.fillStyle=on?'rgba(255,196,102,.95)':'rgba(14,19,48,.72)';x.fill();
+        x.lineWidth=2*sc;x.strokeStyle=on?'#fff3d6':'rgba(255,255,255,.75)';x.stroke();x.beginPath();x.arc(X,Y,rr*.38,0,7);x.fillStyle=on?'#fff':'rgba(255,255,255,.55)';x.fill();x.restore()})}
+    if(dev&&!anim){anim=true;requestAnimationFrame(()=>{anim=false;draw()})}}
+  function hit(e){const r=cv.getBoundingClientRect(),px=(e.clientX-r.left)/r.width*1280,py=(e.clientY-r.top)/r.height*cv.height;let best=null,bd=40*1280/r.width;
+    lights().forEach(a=>{const pts=a.pts.map(p=>mp(p[0],p[1]));pts.forEach(([X,Y])=>{const d=Math.hypot(X-px,Y-py);if(d<bd){bd=d;best=a}});
+      if(a.kind==='strip')for(let i=0;i<pts.length-1;i++){const[p,q]=[pts[i],pts[i+1]],vx=q[0]-p[0],vy=q[1]-p[1],t=Math.max(0,Math.min(1,((px-p[0])*vx+(py-p[1])*vy)/(vx*vx+vy*vy||1))),d=Math.hypot(p[0]+t*vx-px,p[1]+t*vy-py);if(d<bd){bd=d;best=a}}});return best}
+  /* yakınlaştır / kaydır: iki parmak sıkıştır, tek parmakla sürükle, fare tekerleği, çift dokun = sıfırla */
+  Z={s:1,x:0,y:0};const PT=new Map();let g0=null,moved=0,lastTap=0;
+  function apply(){const W=wrap.clientWidth,H=wrap.clientHeight,w=cv.offsetWidth,h=cv.offsetHeight,ox0=cv.offsetLeft,oy0=cv.offsetTop;
+    Z.s=Math.max(1,Math.min(3,Z.s));
+    const minX=Math.min(0,W-(ox0+w*Z.s))-0,maxX=Math.max(0,-ox0),minY=Math.min(0,H-(oy0+h*Z.s)),maxY=Math.max(0,-oy0);
+    if(Z.s===1){Z.x=0;Z.y=0}else{Z.x=Math.max(minX,Math.min(maxX,Z.x));Z.y=Math.max(minY,Math.min(maxY,Z.y))}
+    cv.style.transform=`translate(${Z.x}px,${Z.y}px) scale(${Z.s})`;draw()}
+  function zoomAt(cx,cy,f){const r=wrap.getBoundingClientRect(),px=cx-r.left-cv.offsetLeft,py=cy-r.top-cv.offsetTop,ns=Math.max(1,Math.min(3,Z.s*f)),k=ns/Z.s;
+    Z.x=px-(px-Z.x)*k;Z.y=py-(py-Z.y)*k;Z.s=ns;apply()}
+  const mid=()=>{const v=[...PT.values()];return{x:(v[0].x+v[1].x)/2,y:(v[0].y+v[1].y)/2,d:Math.hypot(v[0].x-v[1].x,v[0].y-v[1].y)}};
+  wrap.addEventListener('pointerdown',e=>{wrap.setPointerCapture(e.pointerId);PT.set(e.pointerId,{x:e.clientX,y:e.clientY});moved=0;g0=PT.size===2?mid():{x:e.clientX,y:e.clientY}});
+  wrap.addEventListener('pointermove',e=>{if(!PT.has(e.pointerId))return;PT.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(PT.size===2){const m=mid();if(g0&&g0.d){zoomAt(m.x,m.y,m.d/g0.d);Z.x+=m.x-g0.x;Z.y+=m.y-g0.y;apply()}g0=m;moved=99}
+    else if(PT.size===1&&g0){const dx=e.clientX-g0.x,dy=e.clientY-g0.y;moved+=Math.abs(dx)+Math.abs(dy);if(Z.s>1){Z.x+=dx;Z.y+=dy;apply()}g0={x:e.clientX,y:e.clientY}}});
+  function up(e){if(!PT.has(e.pointerId))return;const single=PT.size===1;PT.delete(e.pointerId);g0=PT.size===1?[...PT.values()][0]:null;
+    if(single&&moved<10){const t=Date.now();const a=hit(e);
+      if(a){const now=!a.on;patchAcc(a.id,{on:now});toast(`${a.name} ${now?'açıldı':'kapatıldı'}`);lastTap=0}
+      else if(t-lastTap<320){Z={s:1,x:0,y:0};apply();lastTap=0}else lastTap=t}}
+  wrap.addEventListener('pointerup',up);wrap.addEventListener('pointercancel',e=>{PT.delete(e.pointerId);g0=null});
+  wrap.addEventListener('wheel',e=>{e.preventDefault();zoomAt(e.clientX,e.clientY,Math.exp(-e.deltaY*0.0015))},{passive:false});
+  addEventListener('resize',apply);
+  function setMod(v){mod=v;try{localStorage.setItem('aksongur-gorunum',v)}catch(e){}
+    document.querySelectorAll('[data-vm]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.vm===v));wrap.hidden=v!=='ai';$('#aiDay').hidden=v!=='ai';document.documentElement.classList.toggle('ai-mod',v==='ai');document.querySelectorAll('#view-kontrol button').forEach(b=>{if(b.classList.contains('bal-t')||/Işık düğmeleri|Balon/.test(b.textContent))b.style.display=v==='ai'?'none':''});
+    const h=document.querySelector('#view-kontrol .hint');if(h)h.style.visibility=v==='ai'?'hidden':'';if(v==='ai')draw(true)}
+  document.querySelectorAll('[data-vm]').forEach(b=>b.addEventListener('click',()=>setMod(b.dataset.vm)));
+  window.__aiDraw=r=>{if(r){Z={s:1,x:0,y:0};apply()}draw(r)};setInterval(()=>draw(),60000);setMod(mod);
+})();
+setFloor(FLOOR);initStore().then(watchPin);initWeather();
 /* ---------- iHost köprüsü (ihost-koprusu/kopru.js) ---------- */
 const IHKEY='aksongur-ihost';let IHOST={url:''};try{Object.assign(IHOST,JSON.parse(localStorage.getItem(IHKEY)||'{}'))}catch(e){}
 let IHLIST=null;
