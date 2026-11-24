@@ -97,6 +97,7 @@ nav.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--
 .stage-ctrl .vmode button{min-height:38px;padding:0 14px;border-radius:9px;background:none;border:0;color:#9aa3d6;font-weight:700}
 .stage-ctrl .vmode button[aria-pressed=true]{background:#4a63ff;color:#fff}
 html.ai-mod .bal-ov,html.ai-mod .bal-t{display:none!important}
+.gun-btn{min-height:38px;padding:0 12px;border-radius:10px;font-weight:700}
 .ai-day{font-size:12px;color:#9aa3d6;align-self:center;padding:0 4px}
 .stage-ctrl{position:absolute;left:12px;bottom:12px;display:flex;gap:8px;z-index:3;flex-wrap:wrap}
 .stage-ctrl button{display:inline-flex;align-items:center;gap:7px;padding:9px 13px;border-radius:12px;font-size:12px;font-weight:600;
@@ -376,7 +377,7 @@ html:not(.ph) .room-views{margin:10px auto 0}html:not(.ph) .floors button[aria-p
     <div class="stage-wrap">
       <div class="room-views" id="roomViews" role="group" aria-label="Odalar"></div>
       <div class="stage" id="stage"><div class="floor-empty" id="floorEmpty" hidden><strong id="feTitle">Kat 2</strong><p>Bu katın planı henüz eklenmedi. Kat planı görselini gönderdiğinde bu katı da 3B olarak kuracağım.</p></div><div class="thermo" id="thermo"></div><div class="ai-wrap" id="aiWrap" hidden><canvas id="aiCv" width="1280" height="598" aria-label="Gerçekçi kat planı"></canvas></div><div class="stage-ctrl" id="stageCtrl">
-        <div class="vmode" role="group" aria-label="Görünüm"><button type="button" data-vm="3d" aria-pressed="true">3D</button><button type="button" data-vm="ai" aria-pressed="false">AI</button></div><span class="ai-day" id="aiDay" hidden></span>
+        <div class="vmode" role="group" aria-label="Görünüm"><button type="button" data-vm="3d" aria-pressed="true">3D</button><button type="button" data-vm="ai" aria-pressed="false">AI</button></div><button type="button" id="gunBtn" class="gun-btn" title="Gündüz / gece">Oto</button><span class="ai-day" id="aiDay" hidden></span>
         <button class="on" id="allOn" type="button" title="Bu kattaki bütün ışıkları aç"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z"/></svg>Tüm ışıkları aç</button>
         <button id="allOff" type="button"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3zM4 4l16 16"/></svg>Tüm ışıkları kapat</button>
       </div></div>
@@ -1001,9 +1002,9 @@ function init3D(){
       const eq=229.18*(.000075+.001868*Math.cos(g)-.032077*Math.sin(g)-.014615*Math.cos(2*g)-.040849*Math.sin(2*g));
       const de=.006918-.399912*Math.cos(g)+.070257*Math.sin(g)-.006758*Math.cos(2*g)+.000907*Math.sin(2*g)-.002697*Math.cos(3*g)+.00148*Math.sin(3*g);
       const ha=Math.acos(Math.cos(90.833*Math.PI/180)/(Math.cos(lat)*Math.cos(de))-Math.tan(lat)*Math.tan(de))*180/Math.PI;return[720-4*(29.2336+ha)-eq+180,720-4*(29.2336-ha)-eq+180]}
-    const geceMi=()=>{const q=(location.search.match(/[?&]gece=(\d)/)||[])[1];if(q)return q==='1';const n=new Date(),[a,b]=gunes(n),t=n.getHours()*60+n.getMinutes();return t<a||t>=b};
+    const geceMi=()=>{const gm=window.__gunMod&&window.__gunMod();if(gm)return gm==='gece';const q=(location.search.match(/[?&]gece=(\d)/)||[])[1];if(q)return q==='1';const n=new Date(),[a,b]=gunes(n),t=n.getHours()*60+n.getMinutes();return t<a||t>=b};
     function isik(){const baked=!!(BAKED[FLOOR]&&MATS[FLOOR]);const g=geceMi();gece=g;
-      LT.forEach(([l,i])=>{l.intensity=baked?(g?i*0.35:i*0.25):i});
+      LT.forEach(([l,i])=>{l.intensity=baked?(g?i*0.14:i*0.25):i});
       for(const k in MATS)MATS[k].forEach(m=>{m.lightMapIntensity=g?0.07:1.3;m.color.copy(m.userData.c0).multiply(g?NT:WT)});
       renderer.toneMappingExposure=baked&&!g?0.95:1.15;renderer.shadowMap.needsUpdate=true;needs=true}
     for(const k in BAKED){const lm=TL.load(BAKED[k]+'_isik.jpg',()=>{needs=true});lm.encoding=THREE.sRGBEncoding;lm.flipY=false;
@@ -1675,6 +1676,12 @@ function watchPin(){if(!DB)return;DB.doc('settings/lock').onSnapshot(sn=>{const 
 const _rs=renderSettings;renderSettings=function(){_rs();renderThermo();renderRooms();refreshCam()};
 
 init3D();renderSettings();
+/* gündüz/gece seçimi: Oto (saate göre) → Gündüz → Gece */
+(function(){const L=['oto','gun','gece'],T={oto:'Oto ◐',gun:'Gündüz ☀',gece:'Gece ☾'};let v='oto';try{v=localStorage.getItem('aksongur-gunmod')||'oto'}catch(e){}
+  const b=$('#gunBtn');const set=()=>{if(b)b.textContent=T[v];window.__aiDraw&&window.__aiDraw()};
+  window.__gunMod=()=>v==='oto'?null:v;
+  if(b)b.addEventListener('click',()=>{v=L[(L.indexOf(v)+1)%3];try{localStorage.setItem('aksongur-gunmod',v)}catch(e){}set();toast(v==='oto'?'Gündüz/gece saate göre':v==='gun'?'Gündüz görünümü':'Gece görünümü')});set()})();
+
 /* ---------- AI görünümü: gerçekçi plan görselleri (gündüz / gece kapalı / gece açık), lambalar gerçek duruma göre ---------- */
 (function(){
   const AI={1:{bb:[25,17,1028,578],h:598},2:{bb:[37,20,1250,687],h:692},3:{bb:[23,13,1258,692],h:700}};
@@ -1689,7 +1696,7 @@ init3D();renderSettings();
     const ha=Math.acos(Math.cos(90.833*Math.PI/180)/(Math.cos(lat)*Math.cos(de))-Math.tan(lat)*Math.tan(de))*180/Math.PI;
     return[720-4*(HOME.lon+ha)-eq+180,720-4*(HOME.lon-ha)-eq+180]}
   const hm=v=>String(Math.floor(v/60)).padStart(2,'0')+':'+String(Math.round(v%60)).padStart(2,'0');
-  function gece(){const q=(location.search.match(/[?&]gece=(\d)/)||[])[1];if(q)return q==='1';const n=new Date(),[d,b]=gunes(n),t=n.getHours()*60+n.getMinutes();
+  function gece(){const gm=window.__gunMod&&window.__gunMod();if(gm){const el=$('#aiDay');if(el)el.textContent='';return gm==='gece'}const q=(location.search.match(/[?&]gece=(\d)/)||[])[1];if(q)return q==='1';const n=new Date(),[d,b]=gunes(n),t=n.getHours()*60+n.getMinutes();
     const el=$('#aiDay');if(el)el.textContent=(t>=d&&t<b?'Gündüz · gün batımı ':'Gece · gün doğumu ')+hm(t>=d&&t<b?b:d);return t<d||t>=b}
   function plan(){let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;WALLS.forEach(w=>{x0=Math.min(x0,w[0]);y0=Math.min(y0,w[1]);x1=Math.max(x1,w[0]+w[2]);y1=Math.max(y1,w[1]+w[3])});return[x0,y0,x1,y1]}
   let P=null,B=null;const mp=(px,py)=>[B[0]+(px-P[0])/(P[2]-P[0])*(B[2]-B[0]),B[1]+(py-P[1])/(P[3]-P[1])*(B[3]-B[1])];
