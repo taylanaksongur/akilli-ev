@@ -96,6 +96,7 @@ nav.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--
 .vmode{display:inline-flex;background:rgba(20,26,62,.92);border-radius:12px;padding:3px;gap:2px}
 .stage-ctrl .vmode button{min-height:38px;padding:0 14px;border-radius:9px;background:none;border:0;color:#9aa3d6;font-weight:700}
 .stage-ctrl .vmode button[aria-pressed=true]{background:#4a63ff;color:#fff}
+html.ai-mod .bal-ov,html.ai-mod .bal-t{display:none!important}
 .ai-day{font-size:12px;color:#9aa3d6;align-self:center;padding:0 4px}
 .stage-ctrl{position:absolute;left:12px;bottom:12px;display:flex;gap:8px;z-index:3;flex-wrap:wrap}
 .stage-ctrl button{display:inline-flex;align-items:center;gap:7px;padding:9px 13px;border-radius:12px;font-size:12px;font-weight:600;
@@ -1653,7 +1654,7 @@ init3D();renderSettings();
   const R={spot:170,pendant:190,sconce:110,lamp:120,strip:75};
   const wrap=$('#aiWrap'),cv=$('#aiCv'),x=cv.getContext('2d'),o=document.createElement('canvas'),ox=o.getContext('2d'),m=document.createElement('canvas'),mx=m.getContext('2d');
   let mod='3d';try{mod=localStorage.getItem('aksongur-gorunum')==='ai'?'ai':'3d'}catch(e){}
-  const IMG={},K={};let anim=false;
+  const IMG={},K={};let anim=false,Z={s:1,x:0,y:0};
   function img(n,t){const k=n+t;if(!IMG[k]){const i=new Image();i.onload=()=>draw();i.src='ai/k'+n+'_'+t+'.jpg';IMG[k]=i}return IMG[k]}
   function gunes(d){const lat=HOME.lat*Math.PI/180,N=Math.floor((d-new Date(d.getFullYear(),0,0))/864e5),g=2*Math.PI/365*(N-1);
     const eq=229.18*(.000075+.001868*Math.cos(g)-.032077*Math.sin(g)-.014615*Math.cos(2*g)-.040849*Math.sin(2*g));
@@ -1684,24 +1685,29 @@ init3D();renderSettings();
     let dev=false;const L=lights();L.forEach(a=>{const h=a.on?bri(a):0;if(reset||K[a.id]==null)K[a.id]=reset?h:0;if(Math.abs(K[a.id]-h)>.01){K[a.id]+=(h-K[a.id])*.2;dev=true}else K[a.id]=h});
     x.globalCompositeOperation='source-over';x.globalAlpha=1;x.drawImage(base,0,0);
     for(const a of L){const k=K[a.id];
-      if(k<=.005){const pts=a.pts.map(p=>mp(p[0],p[1]));x.save();x.strokeStyle='rgba(255,255,255,.35)';x.lineWidth=1.5;pts.forEach(([X,Y])=>{x.beginPath();x.arc(X,Y,6,0,7);x.stroke()});x.restore();continue}
+      if(k<=.005)continue;
       const r=(R[a.kind]||150)*(.6+.4*k);mx.globalCompositeOperation='source-over';mx.clearRect(0,0,1280,C.h);const pts=maske(a,r);
       x.save();if(roomPath(x,a))x.clip();
       if(night){ox.globalCompositeOperation='source-over';ox.clearRect(0,0,1280,C.h);ox.drawImage(lit,0,0);ox.globalCompositeOperation='destination-in';ox.drawImage(m,0,0);
         x.globalAlpha=Math.min(1,k*1.15);x.drawImage(o,0,0)}
       else{x.globalCompositeOperation='soft-light';x.globalAlpha=.4*k;const p=pts[0],g=x.createRadialGradient(p[0],p[1],0,p[0],p[1],r);g.addColorStop(0,'#ffcf80');g.addColorStop(1,'rgba(255,207,128,0)');x.fillStyle=g;x.fillRect(0,0,1280,C.h)}
       x.restore();parilti(a,pts,k,night)}
+    /* dokunma düğmeleri: ekranda hep aynı boyda (yakınlaştırınca planla birlikte kayar) */
+    const sc=1280/Math.max(1,cv.offsetWidth)/(Z.s||1),rr=12*sc;
+    for(const a of L){const on=K[a.id]>.5,pts=a.pts.map(p=>mp(p[0],p[1]));let q=pts[0];if(a.kind==='strip'&&pts.length>1){const i=Math.floor((pts.length-1)/2);q=[(pts[i][0]+pts[i+1][0])/2,(pts[i][1]+pts[i+1][1])/2]}
+      (a.kind==='strip'?[q]:pts).forEach(([X,Y])=>{x.save();x.beginPath();x.arc(X,Y,rr,0,7);x.fillStyle=on?'rgba(255,196,102,.95)':'rgba(14,19,48,.72)';x.fill();
+        x.lineWidth=2*sc;x.strokeStyle=on?'#fff3d6':'rgba(255,255,255,.75)';x.stroke();x.beginPath();x.arc(X,Y,rr*.38,0,7);x.fillStyle=on?'#fff':'rgba(255,255,255,.55)';x.fill();x.restore()})}
     if(dev&&!anim){anim=true;requestAnimationFrame(()=>{anim=false;draw()})}}
   function hit(e){const r=cv.getBoundingClientRect(),px=(e.clientX-r.left)/r.width*1280,py=(e.clientY-r.top)/r.height*cv.height;let best=null,bd=40*1280/r.width;
     lights().forEach(a=>{const pts=a.pts.map(p=>mp(p[0],p[1]));pts.forEach(([X,Y])=>{const d=Math.hypot(X-px,Y-py);if(d<bd){bd=d;best=a}});
       if(a.kind==='strip')for(let i=0;i<pts.length-1;i++){const[p,q]=[pts[i],pts[i+1]],vx=q[0]-p[0],vy=q[1]-p[1],t=Math.max(0,Math.min(1,((px-p[0])*vx+(py-p[1])*vy)/(vx*vx+vy*vy||1))),d=Math.hypot(p[0]+t*vx-px,p[1]+t*vy-py);if(d<bd){bd=d;best=a}}});return best}
   /* yakınlaştır / kaydır: iki parmak sıkıştır, tek parmakla sürükle, fare tekerleği, çift dokun = sıfırla */
-  let Z={s:1,x:0,y:0};const PT=new Map();let g0=null,moved=0,lastTap=0;
+  Z={s:1,x:0,y:0};const PT=new Map();let g0=null,moved=0,lastTap=0;
   function apply(){const W=wrap.clientWidth,H=wrap.clientHeight,w=cv.offsetWidth,h=cv.offsetHeight,ox0=cv.offsetLeft,oy0=cv.offsetTop;
     Z.s=Math.max(1,Math.min(3,Z.s));
     const minX=Math.min(0,W-(ox0+w*Z.s))-0,maxX=Math.max(0,-ox0),minY=Math.min(0,H-(oy0+h*Z.s)),maxY=Math.max(0,-oy0);
     if(Z.s===1){Z.x=0;Z.y=0}else{Z.x=Math.max(minX,Math.min(maxX,Z.x));Z.y=Math.max(minY,Math.min(maxY,Z.y))}
-    cv.style.transform=`translate(${Z.x}px,${Z.y}px) scale(${Z.s})`}
+    cv.style.transform=`translate(${Z.x}px,${Z.y}px) scale(${Z.s})`;draw()}
   function zoomAt(cx,cy,f){const r=wrap.getBoundingClientRect(),px=cx-r.left-cv.offsetLeft,py=cy-r.top-cv.offsetTop,ns=Math.max(1,Math.min(3,Z.s*f)),k=ns/Z.s;
     Z.x=px-(px-Z.x)*k;Z.y=py-(py-Z.y)*k;Z.s=ns;apply()}
   const mid=()=>{const v=[...PT.values()];return{x:(v[0].x+v[1].x)/2,y:(v[0].y+v[1].y)/2,d:Math.hypot(v[0].x-v[1].x,v[0].y-v[1].y)}};
@@ -1717,7 +1723,7 @@ init3D();renderSettings();
   wrap.addEventListener('wheel',e=>{e.preventDefault();zoomAt(e.clientX,e.clientY,Math.exp(-e.deltaY*0.0015))},{passive:false});
   addEventListener('resize',apply);
   function setMod(v){mod=v;try{localStorage.setItem('aksongur-gorunum',v)}catch(e){}
-    document.querySelectorAll('[data-vm]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.vm===v));wrap.hidden=v!=='ai';$('#aiDay').hidden=v!=='ai';
+    document.querySelectorAll('[data-vm]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.vm===v));wrap.hidden=v!=='ai';$('#aiDay').hidden=v!=='ai';document.documentElement.classList.toggle('ai-mod',v==='ai');document.querySelectorAll('#view-kontrol button').forEach(b=>{if(b.classList.contains('bal-t')||/Işık düğmeleri|Balon/.test(b.textContent))b.style.display=v==='ai'?'none':''});
     const h=document.querySelector('#view-kontrol .hint');if(h)h.style.visibility=v==='ai'?'hidden':'';if(v==='ai')draw(true)}
   document.querySelectorAll('[data-vm]').forEach(b=>b.addEventListener('click',()=>setMod(b.dataset.vm)));
   window.__aiDraw=r=>{if(r){Z={s:1,x:0,y:0};apply()}draw(r)};setInterval(()=>draw(),60000);setMod(mod);
