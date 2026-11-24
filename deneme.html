@@ -487,7 +487,7 @@ html:not(.ph) .room-views{margin:10px auto 0}html:not(.ph) .floors button[aria-p
 <script>window.aksiEsitle&&aksiEsitle({alan:"ev",anahtarlar:{"aksongur-aksesuarlar":{her:["on","bri"]},"aksongur-ihost":{},"aksongur-modlar":{},"aksongur-balon-yer":{},"aksongur-kamera-v3":{gizli:["pass"]}}})</script>
 <script>/* Işık durumunu en erken başlat: sayfa kütüphaneleri yüklenirken istek zaten yolda olsun */
 try{var __t=localStorage.getItem('aksi-oturum');if(__t){window.__ihOn=fetch('https://aksi-hesap.aksongur.workers.dev/kopru/ihost/cihazlar',{headers:{Authorization:'Bearer '+__t},cache:'no-store'}).then(function(r){return r.ok?r.json():null}).catch(function(){return null})}}catch(e){}</script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script><script src="lib/GLTFLoader.js"></script>
 <script>
 (function(){
 const $=s=>document.querySelector(s);
@@ -989,6 +989,33 @@ function init3D(){
   const moon=new THREE.DirectionalLight('#8fa2ff',0.28);moon.position.set(-2,13,9);moon.target.position.set(3,0,0);scene.add(moon.target);moon.castShadow=true;
   moon.shadow.mapSize.set(2048,2048);Object.assign(moon.shadow.camera,{left:-12,right:12,top:12,bottom:-12,near:1,far:45});moon.shadow.bias=-0.0008;scene.add(moon);
 
+  
+  /* ---------- Gerçekçi 3D (deneme): Blender'da pişmiş ışık/gölge + gerçek dokular. Gündüz/gece saate göre ---------- */
+  (function(){
+    if(!THREE.GLTFLoader||HAFIF)return;
+    const BAKED={1:'bake/k1'};const LT=[];root.traverse(o=>{if(o.isLight&&!o.isPointLight)LT.push([o,o.intensity])});
+    const TL=new THREE.TextureLoader(),tx=u=>{const t=TL.load(u,()=>{needs=true});t.encoding=THREE.sRGBEncoding;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=8;return t};
+    const SW={T_ahsap:tx('tex/ahsap.jpg'),T_tas:tx('tex/tas.jpg'),T_cim:tx('tex/cim.jpg')};
+    const MATS={},NT=new THREE.Color(0.72,0.78,1),WT=new THREE.Color(1,1,1);let gece=null;
+    function gunes(d){const lat=40.8758*Math.PI/180,N=Math.floor((d-new Date(d.getFullYear(),0,0))/864e5),g=2*Math.PI/365*(N-1);
+      const eq=229.18*(.000075+.001868*Math.cos(g)-.032077*Math.sin(g)-.014615*Math.cos(2*g)-.040849*Math.sin(2*g));
+      const de=.006918-.399912*Math.cos(g)+.070257*Math.sin(g)-.006758*Math.cos(2*g)+.000907*Math.sin(2*g)-.002697*Math.cos(3*g)+.00148*Math.sin(3*g);
+      const ha=Math.acos(Math.cos(90.833*Math.PI/180)/(Math.cos(lat)*Math.cos(de))-Math.tan(lat)*Math.tan(de))*180/Math.PI;return[720-4*(29.2336+ha)-eq+180,720-4*(29.2336-ha)-eq+180]}
+    const geceMi=()=>{const q=(location.search.match(/[?&]gece=(\d)/)||[])[1];if(q)return q==='1';const n=new Date(),[a,b]=gunes(n),t=n.getHours()*60+n.getMinutes();return t<a||t>=b};
+    function isik(){const baked=!!(BAKED[FLOOR]&&MATS[FLOOR]);const g=geceMi();gece=g;
+      LT.forEach(([l,i])=>{l.intensity=baked?(g?i*0.35:i*0.25):i});
+      for(const k in MATS)MATS[k].forEach(m=>{m.lightMapIntensity=g?0.07:1.3;m.color.copy(m.userData.c0).multiply(g?NT:WT)});
+      renderer.toneMappingExposure=baked&&!g?0.95:1.15;renderer.shadowMap.needsUpdate=true;needs=true}
+    for(const k in BAKED){const lm=TL.load(BAKED[k]+'_isik.jpg',()=>{needs=true});lm.encoding=THREE.sRGBEncoding;lm.flipY=false;
+      new THREE.GLTFLoader().load(BAKED[k]+'.glb',gl=>{const F=FG[k];MATS[k]=[];
+        F.children.slice().forEach(o=>{o.traverse(m=>{if(m.isMesh&&!(m.material&&m.material.transparent))m.visible=false})});
+        gl.scene.traverse(m=>{if(!m.isMesh)return;m.castShadow=false;m.receiveShadow=true;const g=m.geometry;if(!g.attributes.uv2)return;
+          const mt=m.material;mt.lightMap=lm;mt.envMapIntensity=0;mt.metalness=0;
+          const sw=SW[(mt.name||'').split('.')[0]];if(sw&&mt.map){const t=sw.clone();t.needsUpdate=true;t.repeat.copy(mt.map.repeat).multiplyScalar(0.6);t.offset.copy(mt.map.offset);mt.map=t}
+          mt.userData.c0=mt.color.clone();{const c=mt.color;if(c.b>0.4&&c.b>c.r*2.2&&!mt.map)mt.userData.c0=new THREE.Color(0.32,0.32,0.31)}mt.needsUpdate=true;MATS[k].push(mt)});
+        F.add(gl.scene);isik()})}
+    let lastF=0;setInterval(()=>{if(FLOOR!==lastF||geceMi()!==gece){lastF=FLOOR;isik()}},700);
+  })();
   T={scene,camera,renderer,add,box,mat,M,haloTex,lineTex,group:null,PL:[],HALO:[],EMIS:[],HIT:[],COVERS:[],CLIM:[],PLUGLED:[],CAMCONE:[]};
 
   /* kamera */
